@@ -2,16 +2,30 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { JobBoard } from "@/components/job-board";
 import { getJobStats } from "@/lib/stats";
+import { getJobs } from "@/lib/jobs";
 
 export default async function Home() {
-  const stats = await getJobStats();
+  // Both read the same MongoDB connection, so the board's first page ships
+  // with the HTML instead of arriving after a client round trip.
+  const [stats, initialJobs] = await Promise.all([
+    getJobStats(),
+    getJobs({
+      page: 1,
+      pageSize: 20,
+      sort: "newest",
+      apacReachable: true,
+    }).catch((error) => {
+      console.error("Home: initial jobs unavailable:", error);
+      return undefined;
+    }),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
 
       <main className="flex-1">
-        <JobBoard stats={stats} />
+        <JobBoard stats={stats} initialData={initialJobs} />
       </main>
 
       <footer className="border-t border-border/60 py-10">

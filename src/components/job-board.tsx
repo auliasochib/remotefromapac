@@ -119,18 +119,27 @@ function itemsFrom(options: { value: string; label: string }[]) {
 
 /* -------------------------------------------------------------------------- */
 
-export function JobBoard({ stats }: { stats: JobStats }) {
+export function JobBoard({
+  stats,
+  initialData,
+}: {
+  stats: JobStats;
+  /** First page, rendered on the server so the board paints with content. */
+  initialData?: JobListResponse;
+}) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<JobSort>("newest");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<JobListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<JobListResponse | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  /** The server already fetched the default view — don't fetch it again. */
+  const skipFirstFetch = useRef(Boolean(initialData));
 
   // Debounce the search input
   useEffect(() => {
@@ -140,6 +149,11 @@ export function JobBoard({ stats }: { stats: JobStats }) {
 
   // Fetch whenever search, filters, sort or page change
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
