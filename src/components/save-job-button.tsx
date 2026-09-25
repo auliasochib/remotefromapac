@@ -10,10 +10,12 @@ export function SaveJobButton({
   job,
   initialSaved = false,
   className,
+  iconOnly = false,
 }: {
   job: Job;
   initialSaved?: boolean;
   className?: string;
+  iconOnly?: boolean;
 }) {
   const router = useRouter();
   const [saved, setSaved] = useState(initialSaved);
@@ -69,21 +71,28 @@ export function SaveJobButton({
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      size={iconOnly ? "icon-sm" : "sm"}
       onClick={toggle}
       disabled={busy}
       aria-label={saved ? "Remove from saved jobs" : "Save job"}
-      className={`shrink-0 ${className ?? ""}`}
+      title={saved ? "Remove from saved jobs" : "Save job"}
+      className={`shrink-0 rounded-lg text-muted-foreground hover:text-foreground ${
+        saved ? "text-primary hover:text-primary" : ""
+      } ${className ?? ""}`}
     >
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : saved ? (
-        <BookmarkCheck className="h-4 w-4 text-primary" />
+        <BookmarkCheck className="h-4 w-4 fill-primary/20" />
       ) : (
         <Bookmark className="h-4 w-4" />
       )}
-      {saved ? "Saved" : "Save"}
+      {iconOnly ? null : saved ? (
+        "Saved"
+      ) : (
+        "Save"
+      )}
     </Button>
   );
 }

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Bookmark, ExternalLink, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { initials } from "@/lib/format";
 
@@ -29,35 +28,43 @@ type State =
   | { status: "error"; message: string }
   | { status: "ready"; jobs: SavedJob[] };
 
+async function fetchSavedJobs(): Promise<State> {
+  try {
+    const res = await fetch("/api/saved-jobs");
+    if (res.status === 401) return { status: "unauthenticated" };
+    if (res.status === 503) return { status: "not-configured" };
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    const data = await res.json();
+    return { status: "ready", jobs: data.jobs ?? [] };
+  } catch {
+    return {
+      status: "error",
+      message: "Could not load saved jobs. Please try again.",
+    };
+  }
+}
+
 export function SavedJobsList() {
   const [state, setState] = useState<State>({ status: "loading" });
 
-  const load = useCallback(async () => {
-    setState({ status: "loading" });
-    try {
-      const res = await fetch("/api/saved-jobs");
-      if (res.status === 401) {
-        setState({ status: "unauthenticated" });
-        return;
-      }
-      if (res.status === 503) {
-        setState({ status: "not-configured" });
-        return;
-      }
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      const data = await res.json();
-      setState({ status: "ready", jobs: data.jobs ?? [] });
-    } catch {
-      setState({
-        status: "error",
-        message: "Could not load saved jobs. Please try again.",
-      });
-    }
+  const reload = useCallback(() => {
+    fetchSavedJobs().then((next) => setState(next));
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    fetchSavedJobs().then((next) => {
+      if (!cancelled) setState(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function retry() {
+    setState({ status: "loading" });
+    reload();
+  }
 
   async function remove(jobId: string) {
     setState((prev) =>
@@ -68,7 +75,7 @@ export function SavedJobsList() {
     await fetch(`/api/saved-jobs?jobId=${encodeURIComponent(jobId)}`, {
       method: "DELETE",
     }).catch(() => undefined);
-    load();
+    reload();
   }
 
   if (state.status === "loading") {
@@ -106,7 +113,7 @@ export function SavedJobsList() {
   if (state.status === "error") {
     return (
       <EmptyState title="Something went wrong" text={state.message}>
-        <Button variant="outline" size="sm" onClick={load}>
+        <Button variant="outline" size="sm" className="rounded-lg" onClick={retry}>
           Retry
         </Button>
       </EmptyState>
@@ -129,54 +136,64 @@ export function SavedJobsList() {
   return (
     <div className="space-y-3">
       {state.jobs.map((job) => (
-        <Card key={job._id}>
-          <CardHeader className="flex-row items-center gap-3 space-y-0 py-4">
-            {job.companyLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={job.companyLogo}
-                alt=""
-                className="h-10 w-10 shrink-0 rounded-md border object-contain p-1"
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-muted-foreground">
-                {initials(job.company ?? "?")}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <CardTitle className="truncate text-base">{job.title}</CardTitle>
-              <p className="truncate text-sm text-muted-foreground">
-                {job.company} {job.location ? `· ${job.location}` : ""}
-              </p>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {job.jobType ? (
-                  <Badge variant="secondary">{job.jobType}</Badge>
-                ) : null}
-                {job.category ? (
-                  <Badge variant="outline">{job.category}</Badge>
-                ) : null}
-              </div>
+        <div
+          key={job._id}
+          className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:border-primary/25 hover:shadow-md sm:p-5"
+        >
+          {job.companyLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={job.companyLogo}
+              alt=""
+              className="h-11 w-11 shrink-0 rounded-xl border border-border/70 bg-background object-contain p-1.5"
+            />
+          ) : (
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white shadow-sm">
+              {initials(job.company ?? "?")}
             </div>
-            <div className="flex shrink-0 gap-2">
-              <Button
-                size="sm"
-                render={
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" />
-                }
-              >
-                Apply <ExternalLink className="ml-1 h-3 w-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => remove(job.jobId)}
-                aria-label="Remove saved job"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-heading text-[0.95rem] font-semibold">
+              {job.title}
+            </h3>
+            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+              {job.company} {job.location ? `· ${job.location}` : ""}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {job.jobType ? (
+                <Badge className="rounded-md border-transparent bg-primary/10 font-medium text-primary dark:bg-primary/15">
+                  {job.jobType}
+                </Badge>
+              ) : null}
+              {job.category ? (
+                <Badge variant="outline" className="rounded-md font-normal">
+                  {job.category}
+                </Badge>
+              ) : null}
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+          <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+            <Button
+              size="sm"
+              className="flex-1 rounded-lg sm:flex-none"
+              render={
+                <a href={job.url} target="_blank" rel="noopener noreferrer" />
+              }
+            >
+              Apply <ExternalLink className="ml-1 h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => remove(job.jobId)}
+              aria-label="Remove saved job"
+              title="Remove from saved jobs"
+              className="rounded-lg text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       ))}
     </div>
   );

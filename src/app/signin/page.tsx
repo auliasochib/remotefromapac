@@ -30,10 +30,17 @@ export default async function SignInPage() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
 
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign in to RemoteFromAPAC</CardTitle>
+      <main className="hero-glow relative flex flex-1 items-center justify-center overflow-hidden px-4 py-12">
+        <div className="bg-grid-dots pointer-events-none absolute inset-0" />
+        <Card className="relative w-full max-w-md overflow-hidden rounded-2xl border-border/70 shadow-xl shadow-violet-500/5">
+          <div className="h-1.5 w-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400" />
+          <CardHeader className="space-y-2 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-lg shadow-violet-500/25">
+              <LogIn className="h-6 w-6 text-white" />
+            </div>
+            <CardTitle className="font-heading text-2xl">
+              Sign in to RemoteFromAPAC
+            </CardTitle>
             <CardDescription>
               Sign in to save jobs and manage your favorites.
             </CardDescription>
@@ -48,7 +55,11 @@ export default async function SignInPage() {
                       await signIn("github", { redirectTo: "/" });
                     }}
                   >
-                    <Button type="submit" className="w-full" size="lg">
+                    <Button
+                      type="submit"
+                      className="w-full rounded-xl shadow-md shadow-violet-500/20"
+                      size="lg"
+                    >
                       <GitBranch className="mr-2 h-4 w-4" />
                       Continue with GitHub
                     </Button>
@@ -61,7 +72,12 @@ export default async function SignInPage() {
                       await signIn("google", { redirectTo: "/" });
                     }}
                   >
-                    <Button type="submit" variant="outline" className="w-full" size="lg">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="w-full rounded-xl"
+                      size="lg"
+                    >
                       <LogIn className="mr-2 h-4 w-4" />
                       Continue with Google
                     </Button>
@@ -69,7 +85,7 @@ export default async function SignInPage() {
                 ) : null}
               </>
             ) : (
-              <div className="space-y-3 rounded-md border bg-muted/40 p-4 text-sm">
+              <div className="space-y-3 rounded-xl border border-border/70 bg-muted/40 p-4 text-sm">
                 <p className="font-medium">No sign-in provider configured yet.</p>
                 <p className="text-muted-foreground">
                   Add OAuth credentials to <code>.env.local</code> to enable
