@@ -153,4 +153,56 @@
     background-size: 22px 22px;
     mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
   }
+
+  /*
+   * Entrance animation for cards and panels, staggered via --delay.
+   *
+   * Deliberately transform-only: if a browser ever fails to start the
+   * animation (observed in Chromium with pending start times), the element
+   * simply sits a few pixels lower instead of being stuck invisible. Never
+   * put `opacity: 0` in the from-frame of an animation guarding content.
+   */
+  @keyframes rise-in {
+    from {
+      transform: translateY(10px);
+    }
+    to {
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: rise-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* Shimmer sweep for loading placeholders */
+  @keyframes shimmer-sweep {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(1 0 0 / 10%),
+      transparent
+    );
+    animation: shimmer-sweep 1.6s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .skeleton-shimmer::after {
+    animation: none;
+  }
 }

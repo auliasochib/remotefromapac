@@ -1,18 +1,29 @@
 # RemoteFromAPAC — Remote Work Aggregator
 
-Aggregates remote job opportunities from multiple sources into a single
-searchable dashboard. Phase 1 MVP.
+Aggregates remote job opportunities from job boards and company career pages
+into a single searchable dashboard, filtered to roles someone in Asia–Pacific
+can actually take.
 
 **Live demo:** https://remotefromapac.vercel.app
 
 ## Features
 
-- **Job listings** from multiple providers ([Remotive](https://remotive.com), [Arbeitnow](https://www.arbeitnow.com) and [Jobicy](https://jobicy.com)), refreshed every 15 minutes, with cross-source deduplication
-- **Job detail page** with full description and an *Apply* button that redirects to the original source
-- **Search** by keyword (title, company, description)
-- **Filters**: job type (full-time, part-time, contract, internship, freelance), experience level, category, and region (Worldwide, Asia, Europe, Americas, ...)
+- **Job listings** from five job boards — [We Work Remotely](https://weworkremotely.com) (RSS), [RemoteOK](https://remoteok.com) (JSON API), [Remotive](https://remotive.com), [Arbeitnow](https://www.arbeitnow.com), [Jobicy](https://jobicy.com) — plus 13 **company career pages** via the public Greenhouse, Lever and Ashby job-board APIs
+- **Stored in MongoDB** and refreshed by a sync job, so reads are fast and the board survives an upstream outage
+- **APAC focus**: only roles located in APAC or open worldwide-remote are ingested, and jobs located in the region get an APAC badge
+- **Search** by keyword (title, company, category, description)
+- **Filters**: location (incl. APAC-located only), job type, experience level, category, and source; plus sort by newest / oldest / company
+- **Job detail page** with the full description and an *Apply* button that redirects to the original posting
 - **User accounts** via Auth.js (GitHub / Google OAuth)
-- **Saved jobs** stored in MongoDB — bookmark jobs and manage them on the Saved page
+- **Saved jobs** in MongoDB — bookmark roles and manage them on the Saved page
+
+### Sources that are deliberately not included
+
+**LinkedIn** and **Wellfound** are not scraped: neither offers a public jobs
+API, LinkedIn's user agreement prohibits automated collection, and Wellfound is
+behind a Cloudflare bot challenge. Bypassing either would be circumventing an
+access control, so the board sticks to sources published for exactly this use —
+job-board APIs, RSS feeds, and ATS career-page endpoints.
 
 ## Tech stack
 
@@ -66,10 +77,32 @@ Restart the dev server after changing `.env.local`.
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/jobs?q=&type=&level=&category=&region=&page=` | Search + filter jobs |
+| `GET /api/jobs?q=&type=&level=&category=&region=&source=&sort=&page=` | Search + filter jobs (`region=apac` = located in the region; `source=careers` = all company boards) |
 | `GET /api/jobs/:id` | Single job detail |
+| `POST /api/jobs/sync` | Re-ingest every source (requires `SYNC_SECRET` or `CRON_SECRET`) |
 | `GET/POST/DELETE /api/saved-jobs` | Manage bookmarks (auth required) |
 | `GET /api/health` | Readiness probe: reports `database: connected \| not-configured \| error` (no secrets exposed) |
+
+Job reads come from MongoDB and fall back to the live provider APIs whenever the
+database is empty or unreachable, so the board keeps working either way.
+
+## Syncing jobs
+
+The board is filled by an ingest run that fetches every source, keeps only
+APAC-reachable roles, de-duplicates across boards and upserts the results:
+
+```bash
+npm run sync
+```
+
+Each run also deletes any stored job from a **successfully fetched** source that
+it did not re-confirm — a closed posting, or one that stopped being
+APAC-relevant. A source that fails is left untouched, so a transient outage
+never wipes its jobs.
+
+In production the same work is exposed at `POST /api/jobs/sync`, protected by
+`SYNC_SECRET` (manual calls) or `CRON_SECRET` (Vercel Cron sends it
+automatically). `vercel.json` schedules it once a day.
 
 ## Health check
 
@@ -88,18 +121,38 @@ with HTTP 503 when the database is configured but unreachable.
 ```
 src/
 ├── app/
-│   ├── page.tsx              # Job board (search + filters)
+│   ├── page.tsx              # Job board (search + filters, server-rendered stats)
 │   ├── jobs/[id]/page.tsx    # Job detail + Apply button
 │   ├── saved/page.tsx        # Saved jobs (auth)
 │   ├── signin/page.tsx       # Auth.js sign-in
-│   └── api/                  # jobs, saved-jobs, auth routes
-├── components/               # JobBrowser, JobCard, SaveJobButton, ...
+│   └── api/                  # jobs, jobs/sync, saved-jobs, health, auth routes
+├── components/               # JobBoard, JobCard, SaveJobButton, ...
 ├── lib/
-│   ├── providers.ts          # Remotive + Arbeitnow fetchers & normalizers
-│   ├── jobs.ts               # Aggregation, filtering, pagination
+│   ├── sources.ts            # We Work Remotely, RemoteOK, ATS career boards
+│   ├── providers.ts          # Remotive, Arbeitnow, Jobicy + normalizers
+│   ├── apac.ts               # APAC eligibility classification
+│   ├── sync.ts               # Ingest pipeline (fetch → filter → upsert)
+│   ├── stats.ts              # Counts for the board header and filters
+│   ├── jobs.ts               # DB reads with live fallback, filtering, paging
 │   └── db.ts                 # Mongoose connection
-└── models/saved-job.ts       # SavedJob schema
+├── models/
+│   ├── job.ts                # Job schema (text index, source/region/apac)
+│   └── saved-job.ts          # SavedJob schema
+scripts/sync-jobs.ts          # `npm run sync`
 ```
+
+## How APAC relevance is decided
+
+`src/lib/apac.ts` classifies every job location as:
+
+| Classification | Meaning | Ingested? |
+|---|---|---|
+| `apac` | Located in, or explicitly open to, an APAC country (countries, major cities and region names are matched with word boundaries) | Yes |
+| `worldwide` | Open anywhere — reachable from APAC | Yes |
+| `restricted` | Limited to a region that excludes APAC (US-only, EMEA, Europe, …) | No |
+
+Explicit exclusions are checked first, so `Remote - US only` is not mistaken for
+an open worldwide role.
 
 ## Deploying to Vercel
 
@@ -122,15 +175,16 @@ Alternatively, via the dashboard:
 | Variable | Required | Purpose |
 |---|---|---|
 | `AUTH_SECRET` | **Yes** | Signs Auth.js sessions. The app returns errors without it in production. Generate with `openssl rand -base64 32`. |
-| `MONGODB_URI` | For saved jobs | Without it the Saved page shows a "needs a database" notice. |
+| `MONGODB_URI` | For the job board and saved jobs | The job database and bookmarks both live here. Without it the board falls back to live provider fetches and the Saved page shows a "needs a database" notice. |
+| `SYNC_SECRET` / `CRON_SECRET` | To run the sync endpoint | Authorizes `POST /api/jobs/sync`. Vercel Cron sends `CRON_SECRET` automatically. |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | For sign-in | Without them the Sign-in page shows setup instructions. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | For sign-in | Same as above. |
 
 Browsing, searching and applying work with none of these set.
 
-**Currently set on the live project:** `AUTH_SECRET` and `MONGODB_URI`
-(the `savedjobs` collection lives in database `remotefromapac`).
-Sign-in still needs an OAuth provider.
+**Currently set on the live project:** `AUTH_SECRET`, `MONGODB_URI`,
+`SYNC_SECRET`, `CRON_SECRET`, `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`
+(the `jobs` and `savedjobs` collections live in database `remotefromapac`).
 
 > If MongoDB is unreachable from Vercel, check Atlas → **Network Access**:
 > serverless functions connect from changing IPs, so `0.0.0.0/0` must be

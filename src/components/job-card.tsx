@@ -32,13 +32,24 @@ function tileStyle(name: string) {
   return TILE_STYLES[hash % TILE_STYLES.length];
 }
 
-export function JobCard({ job, search }: { job: Job; search?: string }) {
+export function JobCard({
+  job,
+  search,
+  index = 0,
+}: {
+  job: Job;
+  search?: string;
+  index?: number;
+}) {
   const detailHref = `/jobs/${job.id}${
     search ? `?q=${encodeURIComponent(search)}` : ""
   }`;
 
   return (
-    <article className="group relative flex flex-col rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-violet-500/5">
+    <article
+      className="animate-rise group relative flex flex-col rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-violet-500/5"
+      style={{ "--delay": `${Math.min(index, 11) * 40}ms` } as React.CSSProperties}
+    >
       <div className="flex items-start gap-3">
         {job.companyLogo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -79,6 +90,12 @@ export function JobCard({ job, search }: { job: Job; search?: string }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
+        {job.apac === "apac" ? (
+          <Badge className="rounded-md border-transparent bg-gradient-to-r from-violet-600 to-fuchsia-500 font-medium text-white">
+            <MapPin className="h-3 w-3" />
+            APAC
+          </Badge>
+        ) : null}
         <Badge className="rounded-md border-transparent bg-primary/10 font-medium text-primary hover:bg-primary/15 dark:bg-primary/15">
           {TYPE_LABELS[job.jobType]}
         </Badge>
@@ -97,11 +114,14 @@ export function JobCard({ job, search }: { job: Job; search?: string }) {
       ) : null}
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3.5 text-xs text-muted-foreground">
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className="flex min-w-0 items-center gap-1.5"
+          title={`${job.location} · via ${job.source}`}
+        >
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{job.region}</span>
+          <span className="truncate">{job.location}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1.5" title={`via ${job.source}`}>
           <Clock className="h-3.5 w-3.5" />
           {timeAgo(job.publishedAt)}
         </span>

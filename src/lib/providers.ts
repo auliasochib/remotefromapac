@@ -1,3 +1,4 @@
+import { apacEligibility } from "./apac";
 import type { Job, JobLevel, JobRegion, JobType } from "./types";
 
 const REQUEST_HEADERS = {
@@ -78,32 +79,52 @@ const CATEGORY_RULES: [RegExp, string][] = [
   [/softwar|develop|engineer|program|full[- ]?stack|front[- ]?end|back[- ]?end|devops|\bsre\b|\bqa\b|test|mobile|\bios\b|android|architect|security|cloud|sysadmin/i, "Engineering"],
   [/design|\bux\b|\bui\b|graphic|illustrat|brand/i, "Design"],
   [/marketing|\bseo\b|growth|content|copywrit|social media|email/i, "Marketing"],
-  [/product|project|scrum|owner|program manager/i, "Product"],
-  [/sales|account executive|business development|partnership|\bbd\b/i, "Sales"],
+  [/product manager|product owner|product design|\bproduct\b/i, "Product"],
+  [/sales|account executive|business development|partnership|go[- ]to[- ]market|\bbd\b|\bsdr\b|\bgtm\b/i, "Sales"],
   [/support|customer|success|community|helpdesk/i, "Customer Support"],
-  [/\bhr\b|recruit|talent|people ops/i, "Human Resources"],
-  [/financ|account|bookkeep|audit/i, "Finance"],
+  [/\bhr\b|recruit|talent|people ops|payroll/i, "Human Resources"],
+  [/financ|account|bookkeep|audit|controllership|treasur/i, "Finance"],
   [/writ|edit|journalis|translat/i, "Writing"],
 ];
 
-export function normalizeCategory(raw?: string, tags: string[] = []): string {
-  const text = [raw ?? "", ...tags].join(" ");
+/**
+ * Map a raw category/department label onto one of the canonical categories.
+ *
+ * The job title is included because ATS department names are inconsistent
+ * ("Scaling", "SA - APJ - Japan"), while titles carry dependable signal.
+ * Anything unrecognised collapses into "Other" rather than leaking dozens of
+ * one-off department names into the filter.
+ */
+export function normalizeCategory(
+  raw?: string,
+  tags: string[] = [],
+  title = ""
+): string {
+  const text = [title, raw ?? "", ...tags].join(" ");
   for (const [re, category] of CATEGORY_RULES) {
     if (re.test(text)) return category;
-  }
-  if (raw && raw.trim()) {
-    return raw.trim().replace(/\b\w/g, (c) => c.toUpperCase());
   }
   return "Other";
 }
 
-export function normalizeJobType(raw?: string | string[]): JobType {
+/**
+ * Work out the employment type. Sources that publish an explicit value use it;
+ * for the rest we look for the wording in the title and tags, since a bare
+ * "full-time" default would make the type filter meaningless.
+ */
+export function normalizeJobType(
+  raw?: string | string[],
+  extraText = ""
+): JobType {
   const text = (Array.isArray(raw) ? raw.join(" ") : (raw ?? "")).toLowerCase();
-  if (/intern/.test(text)) return "internship";
-  if (/full[-_ ]?time/.test(text)) return "full-time";
-  if (/part[-_ ]?time/.test(text)) return "part-time";
-  if (/contract/.test(text)) return "contract";
-  if (/freelance/.test(text)) return "freelance";
+  const haystack = `${text} ${extraText}`.toLowerCase();
+
+  if (/intern/.test(haystack)) return "internship";
+  if (/part[-_ ]?time/.test(haystack)) return "part-time";
+  if (/freelance/.test(haystack)) return "freelance";
+  if (/contract|contractor|fixed[-_ ]?term|b2b/.test(haystack)) return "contract";
+  if (/full[-_ ]?time/.test(haystack)) return "full-time";
+
   return text.trim() ? "other" : "full-time";
 }
 
@@ -142,8 +163,9 @@ export async function fetchRemotive(search?: string): Promise<Job[]> {
       url: job.url,
       location: job.candidate_required_location || "Remote",
       region: regionForLocation(job.candidate_required_location ?? ""),
-      jobType: normalizeJobType(job.job_type ?? ""),
-      category: normalizeCategory(job.category ?? undefined),
+      apac: apacEligibility(job.candidate_required_location ?? ""),
+      jobType: normalizeJobType(job.job_type ?? "", job.title),
+      category: normalizeCategory(job.category ?? undefined, [], job.title),
       level: levelForTitle(job.title),
       salary: job.salary?.trim() || null,
       descriptionHtml: job.description ?? "",
@@ -206,14 +228,17 @@ export async function fetchJobicy(): Promise<Job[]> {
       url: job.url,
       location: location || "Remote",
       region: regionForLocation(location),
+      apac: apacEligibility(location),
       jobType: normalizeJobType(
-        Array.isArray(job.jobType) ? job.jobType.join(" ") : (job.jobType ?? "")
+        Array.isArray(job.jobType) ? job.jobType.join(" ") : (job.jobType ?? ""),
+        job.jobTitle
       ),
       category: normalizeCategory(
         Array.isArray(job.jobIndustry)
           ? job.jobIndustry[0]
           : (job.jobIndustry ?? undefined),
-        Array.isArray(job.jobGeo) ? job.jobGeo : []
+        Array.isArray(job.jobGeo) ? job.jobGeo : [],
+        job.jobTitle
       ),
       level: levelForTitle(job.jobTitle),
       salary,
@@ -273,8 +298,12 @@ export async function fetchArbeitnow(): Promise<Job[]> {
         url: job.url,
         location: job.location || "Remote",
         region: regionForLocation(job.location ?? ""),
-        jobType: normalizeJobType(job.job_types ?? []),
-        category: normalizeCategory(undefined, job.tags ?? []),
+        apac: apacEligibility(job.location ?? ""),
+        jobType: normalizeJobType(
+          job.job_types ?? [],
+          `${job.title} ${(job.tags ?? []).join(" ")}`
+        ),
+        category: normalizeCategory(undefined, job.tags ?? [], job.title),
         level: levelForTitle(job.title),
         salary: null,
         descriptionHtml: job.description ?? "",
