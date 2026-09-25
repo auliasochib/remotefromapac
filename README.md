@@ -3,6 +3,8 @@
 Aggregates remote job opportunities from multiple sources into a single
 searchable dashboard. Phase 1 MVP.
 
+**Live demo:** https://remotefromapac.vercel.app
+
 ## Features
 
 - **Job listings** from multiple providers ([Remotive](https://remotive.com), [Arbeitnow](https://www.arbeitnow.com) and [Jobicy](https://jobicy.com)), refreshed every 15 minutes, with cross-source deduplication
@@ -88,11 +90,40 @@ src/
 
 ## Deploying to Vercel
 
+The project is already linked to a Vercel project (`remotefromapac`), so
+deploying is one command:
+
+```bash
+vercel --prod
+```
+
+Alternatively, via the dashboard:
+
 1. Push this repository to GitHub
 2. Go to [vercel.com](https://vercel.com) → Add New Project → import the repo
-3. Add the environment variables (`AUTH_SECRET`, `MONGODB_URI`, OAuth keys with
-   your production callback URLs)
+3. Add the environment variables (see below)
 4. Deploy
+
+### Production environment variables
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `AUTH_SECRET` | **Yes** | Signs Auth.js sessions. The app returns errors without it in production. Generate with `openssl rand -base64 32`. |
+| `MONGODB_URI` | For saved jobs | Without it the Saved page shows a "needs a database" notice. |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | For sign-in | Without them the Sign-in page shows setup instructions. |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | For sign-in | Same as above. |
+
+Browsing, searching and applying work with none of these set.
+
+Set them non-interactively with:
+
+```bash
+printf '%s' "$VALUE" | vercel env add VARIABLE_NAME production
+vercel --prod   # redeploy to pick up new values
+```
+
+Remember to update your OAuth callback URLs to the production domain, e.g.
+`https://remotefromapac.vercel.app/api/auth/callback/github`.
 
 ## Roadmap (Phase 2+)
 
