@@ -1,7 +1,7 @@
 import type { Job, JobLevel, JobRegion, JobType } from "./types";
 
 const REQUEST_HEADERS = {
-  "User-Agent": "RemoteHub/1.0 (remote job aggregator)",
+  "User-Agent": "RemoteFromAPAC/1.0 (remote job aggregator)",
   Accept: "application/json",
 };
 

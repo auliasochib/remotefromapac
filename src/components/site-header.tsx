@@ -11,7 +11,8 @@ export async function SiteHeader() {
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-4">
         <Link href="/" className="flex items-center gap-2 font-bold">
           <Globe className="h-5 w-5 text-primary" />
-          Remote<span className="text-primary">Hub</span>
+          Remote from
+          <span className="text-primary">APAC</span>
         </Link>
 
         <nav className="flex items-center gap-4 text-sm">

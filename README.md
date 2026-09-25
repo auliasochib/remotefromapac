@@ -1,4 +1,4 @@
-# RemoteHub — Remote Work Aggregator
+# RemoteFromAPAC — Remote Work Aggregator
 
 Aggregates remote job opportunities from multiple sources into a single
 searchable dashboard. Phase 1 MVP.

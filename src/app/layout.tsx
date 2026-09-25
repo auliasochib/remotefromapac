@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "RemoteHub — Remote Jobs Aggregator",
-    template: "%s — RemoteHub",
+    default: "RemoteFromAPAC — Remote Jobs Aggregator",
+    template: "%s — RemoteFromAPAC",
   },
   description:
     "Find remote jobs from multiple job boards in one searchable dashboard. Filter by type, level, category and location.",

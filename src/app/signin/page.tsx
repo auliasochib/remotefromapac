@@ -33,7 +33,7 @@ export default async function SignInPage() {
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign in to RemoteHub</CardTitle>
+            <CardTitle className="text-2xl">Sign in to RemoteFromAPAC</CardTitle>
             <CardDescription>
               Sign in to save jobs and manage your favorites.
             </CardDescription>

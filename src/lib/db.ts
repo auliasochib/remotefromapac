@@ -23,7 +23,7 @@ export async function connectDB(): Promise<typeof mongoose> {
 
   if (!cache.mongooseCache.promise) {
     cache.mongooseCache.promise = mongoose.connect(process.env.MONGODB_URI, {
-      dbName: "remotehub",
+      dbName: "remotefromapac",
     });
   }
   cache.mongooseCache.conn = await cache.mongooseCache.promise;
