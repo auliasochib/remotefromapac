@@ -127,8 +127,10 @@ export interface JobMatch {
  * Score how well a resume fits a job.
  *
  * `jobText` should be title + tags + category + plain description; the skill
- * dictionary turns it into the job's requirement set. Scoring: skill coverage
- * dominates, with a seniority-alignment adjustment.
+ * dictionary turns it into the job's requirement set. Scoring rewards real
+ * coverage of that set and discounts jobs where the dictionary found too
+ * little to be confident — a job with one detected skill cannot score 99% on
+ * the strength of a single overlap.
  */
 export function scoreJobMatch(
   jobText: string,
@@ -142,22 +144,26 @@ export function scoreJobMatch(
   const strengths = resumeSkills.filter((skill) => jobSkills.has(skill));
   const missing = [...jobSkills]
     .filter((skill) => !resumeSet.has(skill))
-    // Requirements named in a title ("Senior React Engineer") matter most.
-    .sort((a, b) => Number(b === "Other") - Number(a === "Other"))
     .slice(0, 4);
 
-  // Cover the top requirement skills; beyond ~8 skills the marginal ones
-  // should not drag the score down.
-  const target = Math.min(jobSkills.size, 8) || 1;
-  const coverage = Math.min(strengths.length, target) / target;
+  const known = Math.min(jobSkills.size, 8);
+  // At least 4 requirements are assumed for a job the extractor barely read,
+  // so thin evidence cannot produce a perfect coverage score.
+  const denominator = Math.max(4, known);
+  const coverage = Math.min(strengths.length, denominator) / denominator;
 
   const resumeLevel = levelForYears(resumeYears);
-  const gap = Math.abs(LEVEL_ORDER[resumeLevel] - (LEVEL_ORDER[jobLevel as keyof typeof LEVEL_ORDER] ?? 1));
+  const gap = Math.abs(
+    LEVEL_ORDER[resumeLevel] -
+      (LEVEL_ORDER[jobLevel as keyof typeof LEVEL_ORDER] ?? 1)
+  );
   const seniority = gap === 0 ? 1 : gap === 1 ? 0.75 : 0.45;
+
+  const completeCoverage = strengths.length >= known && known > 0 ? 8 : 0;
 
   const score = Math.max(
     5,
-    Math.min(99, Math.round(coverage * 85 + seniority * 14))
+    Math.min(99, Math.round(coverage * 70 + seniority * 14 + completeCoverage))
   );
 
   return { score, strengths: strengths.slice(0, 6), missing };

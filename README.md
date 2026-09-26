@@ -154,6 +154,33 @@ scripts/sync-jobs.ts          # `npm run sync`
 Explicit exclusions are checked first, so `Remote - US only` is not mistaken for
 an open worldwide role.
 
+## AI features (Phase 4)
+
+The Dashboard (`/dashboard`) turns a resume into job recommendations:
+
+| Feature | How it works | Needs AI key? |
+|---|---|---|
+| **Skill extraction** | 55-skill dictionary matched with word boundaries against the extracted resume text; years of experience parsed from phrasings like "7 years" | No |
+| **Match score per job** | Skill coverage of the job's detected requirements + seniority alignment, computed over the 300 most recent jobs | No |
+| **Recommended jobs** | Top matches with strengths (resume skills the job wants) and missing skills | No |
+| **Resume review** | Rule-based structural/ATS checklist always runs; with an AI key it adds a role-aware critique benchmarked against live market titles | Optional |
+| **Cover letter** | Written from the stored resume + the job's description (on each job detail page) | **Yes** |
+
+Upload a PDF or text file (≤2 MB) on the Dashboard. Only extracted text is
+stored (capped, in `resumeAnalyses`) — never the file itself. Matching,
+review and the letter all read that stored analysis.
+
+**To enable the AI upgrade**, set one provider key (see `.env.example`) and
+redeploy — no code changes. Without a key, matching and the rule-based review
+work fully, and the cover letter button explains what is missing.
+
+### Phase 5 groundwork (notifications)
+
+`subscriptions` and `/api/job-alerts` (auth CRUD) store keyword alerts with a
+frequency. Delivery is not wired yet — it needs a provider credential:
+Resend (email), a Telegram bot token, or a web-push VAPID key. The daily cron
+can compile matches per alert once a channel exists.
+
 ## Job schema
 
 The stored document (`jobs` collection, `src/models/job.ts`) against the
