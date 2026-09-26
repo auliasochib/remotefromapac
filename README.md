@@ -154,6 +154,41 @@ scripts/sync-jobs.ts          # `npm run sync`
 Explicit exclusions are checked first, so `Remote - US only` is not mistaken for
 an open worldwide role.
 
+## Job schema
+
+The stored document (`jobs` collection, `src/models/job.ts`) against the
+planned schema:
+
+| Planned field | Stored as | Notes |
+|---|---|---|
+| `_id` | `_id` + `id` | MongoDB's `_id`, plus a stable `id` of `<source>-<externalId>` used as the upsert key, so a re-sync updates a posting instead of duplicating it |
+| `title` | `title` | |
+| `company` | `company` | |
+| `location` | `location` | Raw string from the source |
+| `category` | `category` | Normalised onto canonical values (Engineering, Data & AI, Design, …) instead of raw ATS department names |
+| `tags` | `tags` | Raw tags/industries/departments from the source, de-duplicated and capped at 12; searchable and shown on cards |
+| `salary?` | `salary` | Formatted string when the source publishes one |
+| `description` | `descriptionHtml` | Named `descriptionHtml` deliberately: it is markup, sanitised before rendering, not plain text |
+| `applyUrl` | `applyUrl` | Link to the original posting |
+| `source` | `source` | `remotive`, `arbeitnow`, `jobicy`, `weworkremotely`, `remoteok`, `greenhouse`, `lever`, `ashby` |
+| `publishedAt` | `publishedAt` | `Date` |
+| `createdAt` | `createdAt` | From schema timestamps, alongside `updatedAt` |
+
+Extra fields the filters and UI depend on: `companyLogo`, `region`, `apac`,
+`jobType`, `level`, `syncedAt`.
+
+### Deduplication
+
+Two layers:
+
+1. **Within a run** — postings are keyed by `company + title` (lower-cased), so
+   the same role appearing on several boards is stored once.
+2. **Across runs** — every write is an upsert on the stable `id`, so a posting
+   that is re-fetched updates in place rather than creating a new row.
+
+Jobs a successful run did not re-confirm are deleted (see *Syncing jobs*), which
+is what keeps closed postings from accumulating.
+
 ## Deploying to Vercel
 
 The project is already linked to a Vercel project (`remotefromapac`), so
