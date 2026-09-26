@@ -131,8 +131,9 @@ export async function syncJobs(): Promise<SyncResult> {
   }
 
   await connectDB();
-  // Make sure indexes exist (including the text index) before bulk writes.
-  await JobModel.init();
+  // syncIndexes (rather than init) also drops indexes that are no longer in
+  // the schema, so a retired index does not linger in the database.
+  await JobModel.syncIndexes();
   const now = new Date();
 
   const operations = keep.map((job) => ({

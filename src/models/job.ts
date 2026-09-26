@@ -32,14 +32,11 @@ const JobSchema = new Schema(
   { timestamps: true }
 );
 
-// Text index powers keyword search across title, company, tags and description.
-JobSchema.index(
-  { title: "text", company: "text", tags: "text", descriptionHtml: "text" },
-  {
-    weights: { title: 5, company: 3, tags: 3, descriptionHtml: 1 },
-    name: "job_text",
-  }
-);
+// Keyword search runs through a case-insensitive regex over title, company,
+// category, tags and description (see buildDbFilter in lib/jobs.ts). A regex is
+// used deliberately so partial words match — searching "front" finds
+// "frontend" — which a $text index cannot do. Revisit if the collection grows
+// enough that a collection scan stops being fast.
 
 export const JobModel =
   models.Job ?? mongoose.model("Job", JobSchema, "jobs");

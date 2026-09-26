@@ -136,7 +136,7 @@ src/
 │   ├── jobs.ts               # DB reads with live fallback, filtering, paging
 │   └── db.ts                 # Mongoose connection
 ├── models/
-│   ├── job.ts                # Job schema (text index, source/region/apac)
+│   ├── job.ts                # Job schema (tags, source/region/apac)
 │   └── saved-job.ts          # SavedJob schema
 scripts/sync-jobs.ts          # `npm run sync`
 ```
