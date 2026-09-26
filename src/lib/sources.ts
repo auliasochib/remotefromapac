@@ -9,6 +9,13 @@ import {
 } from "./providers";
 import type { Job } from "./types";
 
+/*
+ * Sourcing policy: every feed below is a first-party, published-for-
+ * programmatic-access channel — an official API, an RSS feed, or an ATS
+ * job-board endpoint exposed by the employer. No HTML scraping and no data
+ * re-fetched from second- or third-party aggregators. See lib/source-meta.ts.
+ */
+
 const REQUEST_HEADERS = {
   "User-Agent": "RemoteFromAPAC/1.0 (remote job aggregator)",
   Accept: "application/json, text/xml;q=0.9, */*;q=0.8",

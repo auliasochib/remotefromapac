@@ -17,13 +17,30 @@ can actually take.
 - **User accounts** via Auth.js (GitHub / Google OAuth)
 - **Saved jobs** in MongoDB — bookmark roles and manage them on the Saved page
 
-### Sources that are deliberately not included
+### Sourcing policy — no scraping
 
-**LinkedIn** and **Wellfound** are not scraped: neither offers a public jobs
-API, LinkedIn's user agreement prohibits automated collection, and Wellfound is
-behind a Cloudflare bot challenge. Bypassing either would be circumventing an
-access control, so the board sticks to sources published for exactly this use —
-job-board APIs, RSS feeds, and ATS career-page endpoints.
+Every source is a **first-party, published-for-programmatic-access channel**:
+an official API, an RSS feed, or an ATS job-board endpoint exposed by the
+employer itself. The app contains **no HTML scraping** — no parsing of rendered
+pages, no login/cookie/bot-challenge bypasses, and no data re-fetched from
+second- or third-party aggregators.
+
+| Source | Channel | Authorization |
+|---|---|---|
+| We Work Remotely | Official RSS feeds (`/categories/*.rss`) | RSS is published for syndication |
+| RemoteOK | Official JSON API (`remoteok.com/api`) | Public API with terms — requires a followed link back to the original posting; every Apply link is a plain `<a>` to the source |
+| Remotive | Official API (`remotive.com/api`) | Published so developers can share jobs further — requires credit as source + link back, both shown in the UI |
+| Arbeitnow | Official API (`/api/job-board-api`) | Free public API; site asks for a link back — provided |
+| Jobicy | Official API v2 | Public and documented |
+| GitLab, Canonical, Remote.com, Elastic, OpenAI, Vercel, Cloudflare, Proton, Toptal, Ramp, Zapier, Buffer | Each employer's own job-board API on Greenhouse / Lever / Ashby | First-party data, published by the employer via its ATS |
+
+Explicitly **excluded**: LinkedIn, Wellfound, Indeed, Glassdoor and similar —
+no public API, automated collection prohibited or blocked by bot challenges.
+If a future source cannot show a first-party sanctioned channel in this table,
+it does not belong in the app.
+
+Attribution is enforced in code: `src/lib/source-meta.ts` holds the policy and
+each job's detail page links back to its source ("via remoteok" → remoteok.com).
 
 ## Tech stack
 

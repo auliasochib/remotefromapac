@@ -1,6 +1,9 @@
 import { apacEligibility } from "./apac";
 import type { Job, JobLevel, JobRegion, JobType } from "./types";
 
+// Sourcing policy: official APIs and RSS only — first-party published
+// channels, no HTML scraping. See lib/source-meta.ts.
+
 const REQUEST_HEADERS = {
   "User-Agent": "RemoteFromAPAC/1.0 (remote job aggregator)",
   Accept: "application/json",

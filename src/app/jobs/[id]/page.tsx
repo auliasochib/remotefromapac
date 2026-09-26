@@ -11,6 +11,7 @@ import { SaveJobButton } from "@/components/save-job-button";
 import { CoverLetterGenerator } from "@/components/cover-letter-generator";
 import { getJobById } from "@/lib/jobs";
 import { initials, timeAgo } from "@/lib/format";
+import { sourceSite } from "@/lib/source-meta";
 import type { JobType } from "@/lib/types";
 
 const TYPE_LABELS: Record<JobType, string> = {
@@ -186,7 +187,19 @@ export default async function JobDetailPage({
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{job.company}</p>
                     <p className="text-xs capitalize text-muted-foreground">
-                      via {job.source}
+                      via{" "}
+                      {sourceSite(job.source) ? (
+                        <a
+                          href={sourceSite(job.source)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-foreground hover:underline"
+                        >
+                          {job.source}
+                        </a>
+                      ) : (
+                        job.source
+                      )}
                     </p>
                   </div>
                 </div>
