@@ -50,7 +50,7 @@ function filterInMemory(jobs: Job[], query: JobQuery): Job[] {
   const search = query.search?.trim().toLowerCase();
   if (search) {
     result = result.filter((job) => {
-      const haystack = `${job.title} ${job.company} ${job.category} ${job.descriptionHtml}`
+      const haystack = `${job.title} ${job.company} ${job.category} ${job.tags.join(" ")} ${job.descriptionHtml}`
         .replace(/<[^>]*>/g, " ")
         .toLowerCase();
       return haystack.includes(search);
@@ -150,6 +150,7 @@ function buildDbFilter(query: JobQuery): Record<string, unknown> {
       { title: rx },
       { company: rx },
       { category: rx },
+      { tags: rx },
       { descriptionHtml: rx },
     ];
   }
@@ -175,12 +176,13 @@ interface JobRecord {
   title: string;
   company: string;
   companyLogo?: string | null;
-  url: string;
+  applyUrl: string;
   location?: string;
   region?: Job["region"];
   apac?: Job["apac"];
   jobType?: Job["jobType"];
   category?: string;
+  tags?: string[];
   level?: Job["level"];
   salary?: string | null;
   descriptionHtml?: string;
@@ -194,12 +196,13 @@ function toJob(record: JobRecord): Job {
     title: record.title,
     company: record.company,
     companyLogo: record.companyLogo ?? null,
-    url: record.url,
+    applyUrl: record.applyUrl,
     location: record.location ?? "Remote",
     region: record.region ?? "Other",
     apac: record.apac ?? "worldwide",
     jobType: record.jobType ?? "other",
     category: record.category ?? "Other",
+    tags: Array.isArray(record.tags) ? record.tags : [],
     level: record.level ?? "mid",
     salary: record.salary ?? null,
     descriptionHtml: record.descriptionHtml ?? "",

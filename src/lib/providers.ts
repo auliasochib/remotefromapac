@@ -128,6 +128,40 @@ export function normalizeJobType(
   return text.trim() ? "other" : "full-time";
 }
 
+/** Cap on stored tags per job, to keep documents and the UI tidy. */
+const MAX_TAGS = 12;
+
+/**
+ * Clean up raw tag lists from the various sources: drop blanks and
+ * duplicates (case-insensitively), keep the original casing for display, and
+ * cap the count.
+ */
+export function normalizeTags(
+  ...candidates: (
+    | string
+    | null
+    | undefined
+    | readonly (string | null | undefined)[]
+  )[]
+): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const candidate of candidates) {
+    const values = Array.isArray(candidate) ? candidate : [candidate];
+    for (const value of values) {
+      if (typeof value !== "string") continue;
+      const tag = value.replace(/\s+/g, " ").trim();
+      if (!tag || tag.length > 40) continue;
+      const key = tag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag);
+      if (tags.length >= MAX_TAGS) return tags;
+    }
+  }
+  return tags;
+}
 interface RemotiveJob {
   id: number;
   url: string;
@@ -135,6 +169,7 @@ interface RemotiveJob {
   company_name: string;
   company_logo: string | null;
   category: string | null;
+  tags: string[] | null;
   job_type: string | null;
   candidate_required_location: string | null;
   salary: string | null;
@@ -160,12 +195,13 @@ export async function fetchRemotive(search?: string): Promise<Job[]> {
       title: job.title,
       company: job.company_name ?? "Unknown company",
       companyLogo: job.company_logo || null,
-      url: job.url,
+      applyUrl: job.url,
       location: job.candidate_required_location || "Remote",
       region: regionForLocation(job.candidate_required_location ?? ""),
       apac: apacEligibility(job.candidate_required_location ?? ""),
       jobType: normalizeJobType(job.job_type ?? "", job.title),
       category: normalizeCategory(job.category ?? undefined, [], job.title),
+      tags: normalizeTags(job.tags, job.category),
       level: levelForTitle(job.title),
       salary: job.salary?.trim() || null,
       descriptionHtml: job.description ?? "",
@@ -225,7 +261,7 @@ export async function fetchJobicy(): Promise<Job[]> {
       title: job.jobTitle,
       company: job.companyName ?? "Unknown company",
       companyLogo: job.companyLogo || null,
-      url: job.url,
+      applyUrl: job.url,
       location: location || "Remote",
       region: regionForLocation(location),
       apac: apacEligibility(location),
@@ -240,6 +276,7 @@ export async function fetchJobicy(): Promise<Job[]> {
         Array.isArray(job.jobGeo) ? job.jobGeo : [],
         job.jobTitle
       ),
+      tags: normalizeTags(job.jobIndustry, job.jobLevel),
       level: levelForTitle(job.jobTitle),
       salary,
       descriptionHtml: job.jobDescription ?? job.jobExcerpt ?? "",
@@ -295,7 +332,7 @@ export async function fetchArbeitnow(): Promise<Job[]> {
         title: job.title,
         company: job.company_name ?? "Unknown company",
         companyLogo: null,
-        url: job.url,
+        applyUrl: job.url,
         location: job.location || "Remote",
         region: regionForLocation(job.location ?? ""),
         apac: apacEligibility(job.location ?? ""),
@@ -304,6 +341,7 @@ export async function fetchArbeitnow(): Promise<Job[]> {
           `${job.title} ${(job.tags ?? []).join(" ")}`
         ),
         category: normalizeCategory(undefined, job.tags ?? [], job.title),
+        tags: normalizeTags(job.tags),
         level: levelForTitle(job.title),
         salary: null,
         descriptionHtml: job.description ?? "",

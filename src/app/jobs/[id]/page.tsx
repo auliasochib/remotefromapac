@@ -134,6 +134,23 @@ export default async function JobDetailPage({
                   </Badge>
                 ) : null}
               </div>
+
+              {job.tags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Tags
+                  </span>
+                  {job.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="rounded-md font-normal"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6 rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
@@ -178,7 +195,7 @@ export default async function JobDetailPage({
                   size="lg"
                   render={
                     <a
-                      href={job.url}
+                      href={job.applyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     />

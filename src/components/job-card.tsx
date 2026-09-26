@@ -107,6 +107,12 @@ export function JobCard({
         </Badge>
       </div>
 
+      {job.tags.length > 0 ? (
+        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground" title={job.tags.join(" · ")}>
+          {job.tags.slice(0, 5).join(" · ")}
+        </p>
+      ) : null}
+
       {job.salary ? (
         <p className="mt-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
           {job.salary}

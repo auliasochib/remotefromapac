@@ -15,12 +15,13 @@ const JobSchema = new Schema(
     title: { type: String, required: true },
     company: { type: String, required: true },
     companyLogo: { type: String, default: null },
-    url: { type: String, required: true },
+    applyUrl: { type: String, required: true },
     location: { type: String, default: "" },
     region: { type: String, index: true },
     apac: { type: String, index: true },
     jobType: { type: String, index: true },
     category: { type: String, index: true },
+    tags: { type: [String], default: [], index: true },
     level: { type: String, index: true },
     salary: { type: String, default: null },
     descriptionHtml: { type: String, default: "" },
@@ -31,10 +32,13 @@ const JobSchema = new Schema(
   { timestamps: true }
 );
 
-// Text index powers keyword search across title, company and description.
+// Text index powers keyword search across title, company, tags and description.
 JobSchema.index(
-  { title: "text", company: "text", descriptionHtml: "text" },
-  { weights: { title: 5, company: 3, descriptionHtml: 1 }, name: "job_text" }
+  { title: "text", company: "text", tags: "text", descriptionHtml: "text" },
+  {
+    weights: { title: 5, company: 3, tags: 3, descriptionHtml: 1 },
+    name: "job_text",
+  }
 );
 
 export const JobModel =
@@ -46,15 +50,18 @@ export interface JobDoc {
   title: string;
   company: string;
   companyLogo?: string | null;
-  url: string;
+  applyUrl: string;
   location?: string;
   region?: JobRegion;
   apac?: ApacEligibility;
   jobType?: JobType;
   category?: string;
+  tags?: string[];
   level?: JobLevel;
   salary?: string | null;
   descriptionHtml?: string;
   publishedAt: Date;
   syncedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

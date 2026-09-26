@@ -4,6 +4,7 @@ import {
   levelForTitle,
   normalizeCategory,
   normalizeJobType,
+  normalizeTags,
   regionForLocation,
 } from "./providers";
 import type { Job } from "./types";
@@ -182,7 +183,7 @@ export async function fetchWeWorkRemotely(): Promise<Job[]> {
         title,
         company,
         companyLogo: null,
-        url: link,
+        applyUrl: link,
         location,
         region: regionForLocation(location),
         apac: apacEligibility(location),
@@ -192,6 +193,7 @@ export async function fetchWeWorkRemotely(): Promise<Job[]> {
           [item.category ?? ""],
           title
         ),
+        tags: normalizeTags(item.category, result.value.category.replace(/-/g, " ")),
         level: levelForTitle(title),
         salary: null,
         descriptionHtml: capHtml(item.description ?? ""),
@@ -257,7 +259,7 @@ export async function fetchRemoteOk(): Promise<Job[]> {
       title: job.position ?? "Untitled role",
       company: job.company ?? "Unknown company",
       companyLogo: job.company_logo || job.logo || null,
-      url,
+      applyUrl: url,
       location,
       region: regionForLocation(location),
       apac: apacEligibility(location),
@@ -266,6 +268,7 @@ export async function fetchRemoteOk(): Promise<Job[]> {
         textForType(job.position ?? "", job.description ?? "")
       ),
       category: normalizeCategory(undefined, job.tags ?? [], job.position ?? ""),
+      tags: normalizeTags(job.tags),
       level: levelForTitle(job.position ?? ""),
       salary: remoteOkSalary(job),
       descriptionHtml: capHtml(job.description ?? ""),
@@ -307,6 +310,7 @@ interface GreenhouseJob {
   company_name?: string;
   location?: { name?: string };
   departments?: { name?: string }[];
+  metadata?: { name?: string; value?: string | null }[];
 }
 
 async function fetchGreenhouse(board: string): Promise<Job[]> {
@@ -327,12 +331,16 @@ async function fetchGreenhouse(board: string): Promise<Job[]> {
       title: job.title,
       company: job.company_name || board,
       companyLogo: null,
-      url: job.absolute_url,
+      applyUrl: job.absolute_url,
       location,
       region: regionForLocation(location),
       apac: apacEligibility(location),
       jobType: normalizeJobType("", textForType(job.title, job.content ?? "")),
       category: normalizeCategory(department, [], job.title),
+      tags: normalizeTags(
+        (job.departments ?? []).map((entry) => entry.name),
+        (job.metadata ?? []).map((entry) => entry.value)
+      ),
       level: levelForTitle(job.title),
       salary: null,
       descriptionHtml: capHtml(decodeHtmlEntities(job.content ?? "")),
@@ -378,7 +386,7 @@ async function fetchLever(board: string): Promise<Job[]> {
       title: job.text,
       company: board,
       companyLogo: null,
-      url: job.hostedUrl,
+      applyUrl: job.hostedUrl,
       location,
       region: regionForLocation(location),
       apac: apacEligibility(location),
@@ -390,6 +398,11 @@ async function fetchLever(board: string): Promise<Job[]> {
         job.categories?.department ?? job.categories?.team,
         [],
         job.text
+      ),
+      tags: normalizeTags(
+        job.categories?.team,
+        job.categories?.department,
+        job.categories?.commitment
       ),
       level: levelForTitle(job.text),
       salary: null,
@@ -437,7 +450,7 @@ async function fetchAshby(board: string): Promise<Job[]> {
       title: job.title,
       company: board,
       companyLogo: null,
-      url: job.jobUrl,
+      applyUrl: job.jobUrl,
       location,
       region: regionForLocation(location),
       apac: apacEligibility(location),
@@ -450,6 +463,7 @@ async function fetchAshby(board: string): Promise<Job[]> {
         [],
         job.title
       ),
+      tags: normalizeTags(job.department, job.team, job.employmentType),
       level: levelForTitle(job.title),
       salary: null,
       descriptionHtml: capHtml(job.descriptionHtml ?? job.descriptionPlain ?? ""),

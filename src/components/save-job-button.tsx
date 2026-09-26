@@ -37,7 +37,7 @@ export function SaveJobButton({
               title: job.title,
               company: job.company,
               companyLogo: job.companyLogo,
-              url: job.url,
+              url: job.applyUrl,
               location: job.location,
               jobType: job.jobType,
               category: job.category,

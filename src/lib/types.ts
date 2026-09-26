@@ -55,14 +55,20 @@ export interface Job {
   company: string;
   companyLogo: string | null;
   /** Apply URL on the original source */
-  url: string;
+  applyUrl: string;
   location: string;
   region: JobRegion;
   apac: ApacEligibility;
   jobType: JobType;
   category: string;
+  /** Raw tags from the source (skills, departments, industries). */
+  tags: string[];
   level: JobLevel;
   salary: string | null;
+  /**
+   * Sanitised HTML. Named `descriptionHtml` on purpose: it is markup, not
+   * plain text, and is rendered through sanitize-html on the detail page.
+   */
   descriptionHtml: string;
   publishedAt: string;
 }
