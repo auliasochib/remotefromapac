@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Check,
   FileText,
   Loader2,
   Sparkles,
@@ -40,6 +41,12 @@ interface Review {
   missingKeywords: string[];
   atsTips: string[];
   skillSuggestions: string[];
+  overallScore?: number;
+  grade?: string;
+  executiveSummary?: string;
+  sections?: { name: string; verdict: "strong" | "ok" | "weak"; feedback: string }[];
+  topStrengths?: string[];
+  criticalIssues?: { issue: string; why: string; fix: string }[];
 }
 
 type SectionState<T> =
@@ -432,68 +439,233 @@ export function DashboardClient() {
             </p>
           ) : null}
           {review.status === "done" ? (
-            <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-heading text-lg font-semibold">
-                  Resume review
-                </h2>
-                <Badge
-                  variant="outline"
-                  className="rounded-md font-normal capitalize"
-                  title={
-                    review.data.mode === "ai"
-                      ? "Generated with the configured AI provider"
-                      : "Rule-based review — add an AI provider key for deeper critique"
-                  }
-                >
-                  {review.data.mode === "ai" ? "AI review" : "Rule-based"}
-                </Badge>
+            <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              {/* Report header */}
+              <div className="border-b border-border/60 bg-gradient-to-r from-violet-500/5 via-transparent to-fuchsia-500/5 p-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="font-heading text-lg font-semibold">
+                        Resume review
+                      </h2>
+                      <Badge
+                        variant="outline"
+                        className="rounded-md font-normal capitalize"
+                        title={
+                          review.data.mode === "ai"
+                            ? "Recruiter-grade critique generated with DeepSeek"
+                            : "Rule-based review — add an AI provider key for deeper critique"
+                        }
+                      >
+                        {review.data.mode === "ai" ? "AI review" : "Rule-based"}
+                      </Badge>
+                    </div>
+                    {review.data.executiveSummary ? (
+                      <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                        {review.data.executiveSummary}
+                      </p>
+                    ) : (
+                      <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                        {review.data.summary}
+                      </p>
+                    )}
+                  </div>
+
+                  {typeof review.data.overallScore === "number" ? (
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-16 w-16 flex-col items-center justify-center rounded-2xl font-heading ${
+                          review.data.overallScore >= 80
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : review.data.overallScore >= 60
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              : "bg-destructive/10 text-destructive"
+                        }`}
+                      >
+                        <span className="text-xl font-bold leading-none">
+                          {review.data.overallScore}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide opacity-70">
+                          /100
+                        </span>
+                      </div>
+                      {review.data.grade ? (
+                        <Badge
+                          variant="outline"
+                          className="rounded-md font-normal"
+                        >
+                          {review.data.grade}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {review.data.summary}
-              </p>
 
-              <ul className="mt-5 space-y-2.5">
-                {review.data.checklist.map((item) => (
-                  <li key={item.check} className="flex items-start gap-2.5 text-sm">
-                    <span
-                      className={
-                        item.pass
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-amber-600 dark:text-amber-400"
-                      }
-                    >
-                      {item.pass ? "✓" : "✗"}
-                    </span>
-                    <span>
-                      <span className="font-medium">{item.check}</span>
-                      <span className="text-muted-foreground"> — {item.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-6 p-6">
+                {/* Section verdicts */}
+                {review.data.sections && review.data.sections.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {review.data.sections.map((section) => {
+                      const dot =
+                        section.verdict === "strong"
+                          ? "bg-emerald-500"
+                          : section.verdict === "ok"
+                            ? "bg-amber-500"
+                            : "bg-destructive";
+                      return (
+                        <div
+                          key={section.name}
+                          className="rounded-xl border border-border/70 p-4"
+                        >
+                          <p className="flex items-center gap-2 text-sm font-semibold">
+                            <span
+                              className={`h-2 w-2 shrink-0 rounded-full ${dot}`}
+                            />
+                            {section.name}
+                          </p>
+                          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                            {section.feedback}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
 
-              {review.data.atsTips.length > 0 ? (
-                <>
-                  <h3 className="mt-6 text-sm font-semibold">ATS tips</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {review.data.atsTips.map((tip) => (
-                      <li key={tip}>{tip}</li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
+                {/* Top strengths */}
+                {review.data.topStrengths && review.data.topStrengths.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Top strengths</h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {review.data.topStrengths.map((strength) => (
+                        <Badge
+                          key={strength}
+                          className="rounded-md border-transparent bg-emerald-500/10 font-normal text-emerald-700 dark:text-emerald-400"
+                        >
+                          <Check className="h-3 w-3" />
+                          {strength}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-              {review.data.skillSuggestions.length > 0 ? (
-                <>
-                  <h3 className="mt-6 text-sm font-semibold">Skill recommendations</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {review.data.skillSuggestions.map((tip) => (
-                      <li key={tip}>{tip}</li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
+                {/* Prioritized fixes */}
+                {review.data.criticalIssues && review.data.criticalIssues.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      Priority fixes — in order of impact
+                    </h3>
+                    <ol className="mt-3 space-y-3">
+                      {review.data.criticalIssues.map((issue, index) => (
+                        <li
+                          key={issue.issue}
+                          className="rounded-xl border border-border/70 bg-muted/30 p-4"
+                        >
+                          <p className="text-sm font-semibold">
+                            <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                              {index + 1}
+                            </span>
+                            {issue.issue}
+                          </p>
+                          {issue.why ? (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {issue.why}
+                            </p>
+                          ) : null}
+                          {issue.fix ? (
+                            <p className="mt-1.5 text-sm">
+                              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                Fix:{" "}
+                              </span>
+                              {issue.fix}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                {/* Keyword gaps */}
+                {review.data.missingKeywords.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      Keyword gaps vs the market
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Add these only if they truthfully describe your experience.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {review.data.missingKeywords.map((keyword) => (
+                        <Badge
+                          key={keyword}
+                          variant="outline"
+                          className="rounded-md font-normal"
+                        >
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Rule-based structural checks (heuristic mode) */}
+                {review.data.checklist.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Structural checks</h3>
+                    <ul className="mt-2.5 space-y-2.5">
+                      {review.data.checklist.map((item) => (
+                        <li
+                          key={item.check}
+                          className="flex items-start gap-2.5 text-sm"
+                        >
+                          <span
+                            className={
+                              item.pass
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-amber-600 dark:text-amber-400"
+                            }
+                          >
+                            {item.pass ? "✓" : "✗"}
+                          </span>
+                          <span>
+                            <span className="font-medium">{item.check}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              — {item.detail}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {/* ATS tips */}
+                {review.data.atsTips.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">ATS tips</h3>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                      {review.data.atsTips.map((tip) => (
+                        <li key={tip}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {review.data.skillSuggestions.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Skill recommendations</h3>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                      {review.data.skillSuggestions.map((tip) => (
+                        <li key={tip}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
             </section>
           ) : null}
         </>

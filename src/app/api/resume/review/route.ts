@@ -10,14 +10,31 @@ import { getPremiumStatus } from "@/lib/premium";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 interface ChecklistItem {
   check: string;
   pass: boolean;
   detail: string;
 }
 
+interface ReviewSection {
+  name: string;
+  verdict: "strong" | "ok" | "weak";
+  feedback: string;
+}
+
 interface ReviewResult {
   mode: "ai" | "heuristic";
+  /** 0-100 recruiter-grade score. Present in both modes. */
+  overallScore?: number;
+  grade?: "Strong" | "Competitive" | "Needs work";
+  executiveSummary?: string;
+  sections?: ReviewSection[];
+  topStrengths?: string[];
+  criticalIssues?: { issue: string; why: string; fix: string }[];
   summary: string;
   checklist: ChecklistItem[];
   missingKeywords: string[];
@@ -33,7 +50,6 @@ function heuristicReview(
   const words = text.split(/\s+/).filter(Boolean).length;
   const checklist: ChecklistItem[] = [];
 
-  // Contact details — ATS and recruiters both look for these.
   const hasEmail = /[\w.+-]+@[\w-]+\.[\w.]+/.test(text);
   checklist.push({
     check: "Contact email",
@@ -53,7 +69,6 @@ function heuristicReview(
         : "Add a phone number and/or LinkedIn URL.",
   });
 
-  // Standard sections ATS parsers expect.
   const sections: [string, RegExp][] = [
     ["Experience", /experience|employment|work history/i],
     ["Education", /education|degree|b\.?sc|bachelor|university|bootcamp/i],
@@ -70,18 +85,20 @@ function heuristicReview(
     });
   }
 
-  // Impact and action language.
-  const actionVerbs = (text.match(
-    /\b(led|built|designed|developed|launched|improved|reduced|increased|automated|migrated|scaled|shipped|owned)\b/gi
-  ) ?? []).length;
+  const actionVerbs = (
+    text.match(
+      /\b(led|built|designed|developed|launched|improved|reduced|increased|automated|migrated|scaled|shipped|owned)\b/gi
+    ) ?? []
+  ).length;
   checklist.push({
     check: "Action verbs",
     pass: actionVerbs >= 5,
     detail: `${actionVerbs} achievement verbs found (aim for 8+).`,
   });
 
-  const quantified = (text.match(/\b\d+(\.\d+)?\s?(%|percent|x\b)|\$\s?\d|\b\d+k\b/gi) ?? [])
-    .length;
+  const quantified = (
+    text.match(/\b\d+(\.\d+)?\s?(%|percent|x\b)|\$\s?\d|\b\d+k\b/gi) ?? []
+  ).length;
   checklist.push({
     check: "Quantified achievements",
     pass: quantified >= 3,
@@ -106,10 +123,17 @@ function heuristicReview(
         : 'State total experience explicitly, e.g. "7 years of experience".',
   });
 
+  const passed = checklist.filter((item) => item.pass).length;
+  const overallScore = Math.round((passed / checklist.length) * 100);
+  const grade =
+    overallScore >= 80 ? "Strong" : overallScore >= 60 ? "Competitive" : "Needs work";
+
   const topSkills = skills.slice(0, 8);
   return {
     mode: "heuristic",
-    summary: `Structural review of ${words} words. ${skills.length} skills detected out of the ${SKILL_COUNT} the matcher knows. This is a rule-based review — configure an AI provider key for a deeper, role-aware critique.`,
+    overallScore,
+    grade,
+    summary: `Rule-based review of ${words} words: ${passed}/${checklist.length} structural checks passed. ${skills.length} of the ${SKILL_COUNT} skills the matcher knows were detected.`,
     checklist,
     missingKeywords: [],
     atsTips: [
@@ -117,25 +141,32 @@ function heuristicReview(
         ? "Keep the email as plain text (not inside an image or table cell)."
         : "Add a plain-text email — image-only headers break ATS parsing.",
       "Use standard section headings: Experience, Education, Skills.",
-      "Export as text-based PDF (not scanned) — this file parsed fine." +
-        (text.length < 200 ? "" : ""),
       "One column layout parses more reliably than multi-column templates.",
+      "Export as text-based PDF (not scanned) — this file parsed correctly.",
     ],
     skillSuggestions: topSkills.length
-      ? [`Make sure these detected skills also appear in your Experience bullets: ${topSkills.join(", ")}.`]
-      : ["Few skills were detected — name your stack explicitly (languages, frameworks, tools)."],
+      ? [
+          `Make sure these detected skills also appear in your Experience bullets: ${topSkills.join(", ")}.`,
+        ]
+      : [
+          "Few skills were detected — name your stack explicitly (languages, frameworks, tools).",
+        ],
   };
 }
 
 interface AiReview {
-  summary: string;
-  checklist?: { check: string; pass: boolean; detail: string }[];
-  missingKeywords?: string[];
+  overallScore?: number;
+  grade?: string;
+  executiveSummary?: string;
+  sections?: { name?: string; verdict?: string; feedback?: string }[];
+  topStrengths?: string[];
+  criticalIssues?: { issue?: string; why?: string; fix?: string }[];
   atsTips?: string[];
+  keywordGaps?: string[];
   skillSuggestions?: string[];
 }
 
-/** Deep review of the stored resume: rules first, AI for role-aware critique. */
+/** Deep review of the stored resume: rules first, AI for the professional pass. */
 export async function POST(request: NextRequest) {
   const session = await auth();
   const email = session?.user?.email;
@@ -149,7 +180,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Optional: a target role steers the AI critique.
+  // Optional: a target role steers the critique and the market benchmark.
   let targetRole = "";
   try {
     const body = await request.json();
@@ -186,42 +217,75 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ review: base, aiGated });
   }
 
-  // AI pass: re-frame the critique against the target role and suggest
-  // keywords pulled from what the local job market actually asks for.
+  // Benchmark against real market demand: prefer jobs matching the target
+  // role, otherwise the most recent postings.
+  const marketFilter = targetRole
+    ? { title: new RegExp(escapeRegex(targetRole), "i") }
+    : {};
+  const benchmarkJobs = await JobModel.find({
+    apac: { $in: ["apac"] },
+    ...marketFilter,
+  })
+    .sort({ publishedAt: -1 })
+    .limit(40)
+    .select("title tags -_id")
+    .lean<{ title: string; tags?: string[] }[]>();
+
+  const market = (
+    benchmarkJobs.length
+      ? benchmarkJobs
+      : await JobModel.find({ apac: { $in: ["apac"] } })
+          .sort({ publishedAt: -1 })
+          .limit(40)
+          .select("title tags -_id")
+          .lean<{ title: string; tags?: string[] }[]>()
+  )
+    .map((job) => `${job.title}${job.tags?.length ? ` [${job.tags.join(", ")}]` : ""}`)
+    .join("\n");
+
   try {
-    const recentTitles = await JobModel.find({
-      apac: { $in: ["apac", "worldwide"] },
-    })
-      .sort({ publishedAt: -1 })
-      .limit(40)
-      .select("title tags -_id")
-      .lean<{ title: string; tags?: string[] }[]>();
-
-    const market = recentTitles
-      .map((job) => `${job.title}${job.tags?.length ? ` [${job.tags.join(", ")}]` : ""}`)
-      .join("\n");
-
     const ai = await generateJson<AiReview>(
-      "You are a senior technical recruiter and ATS expert reviewing a resume.",
-      `${targetRole ? `Target role: ${targetRole}\n` : ""}Recent remote jobs in this market (title [tags]):\n${market}\n\nResume:\n${analysis.textPreview.slice(0, 6000)}\n\nReturn JSON: { "summary": string (2-3 sentences), "checklist": [{ "check": string, "pass": boolean, "detail": string }] (cover resume structure, formatting, and ATS parsing risks), "missingKeywords": string[] (keywords from the market list the resume should include if truthful), "atsTips": string[], "skillSuggestions": string[] }.`,
-      1400
+      "You are a principal technical recruiter and ATS specialist with 15 years of experience placing remote candidates across the Asia-Pacific region at global companies. You give precise, direct, evidence-based feedback — every point must reference something concrete in the resume or the market data. Never generic advice, never flattery.",
+      `${targetRole ? `Target role: ${targetRole}\n\n` : ""}Live market snapshot — recent APAC job postings (title [tags]):\n${market}\n\nCandidate signals: ~${analysis.yearsExperience ?? "?"} years experience; detected skills: ${analysis.skills.join(", ") || "none"}.\n\nResume:\n${analysis.textPreview.slice(0, 6000)}\n\nProduce a recruiter-grade review as JSON:\n{\n  "overallScore": 0-100 (how competitive this resume is for the target role in this market),\n  "grade": "Strong" | "Competitive" | "Needs work",\n  "executiveSummary": "2-3 sentences positioning the candidate against the market",\n  "sections": [\n    { "name": "Structure & formatting", "verdict": "strong|ok|weak", "feedback": "1-2 sentences, specific" },\n    { "name": "Impact & achievements", "verdict": "...", "feedback": "..." },\n    { "name": "ATS compatibility", "verdict": "...", "feedback": "..." },\n    { "name": "Keyword alignment vs market", "verdict": "...", "feedback": "..." },\n    { "name": "Remote-readiness (APAC)", "verdict": "...", "feedback": "..." }\n  ],\n  "topStrengths": ["3-5 concrete strengths"],\n  "criticalIssues": [ { "issue": "...", "why": "why it matters to a recruiter", "fix": "the exact change to make" } ] (max 4, prioritized),\n  "atsTips": ["max 5, specific"],\n  "keywordGaps": ["market keywords missing from the resume, max 8"],\n  "skillSuggestions": ["max 5"]\n}`,
+      2400
     );
 
+    const verdictAllowed = new Set(["strong", "ok", "weak"]);
     const review: ReviewResult = {
       mode: "ai",
-      summary: ai.summary || base.summary,
-      checklist: [
-        ...(ai.checklist ?? []).map((item) => ({
-          check: String(item.check ?? "").slice(0, 80),
-          pass: Boolean(item.pass),
-          detail: String(item.detail ?? "").slice(0, 240),
+      overallScore:
+        typeof ai.overallScore === "number"
+          ? Math.max(0, Math.min(100, Math.round(ai.overallScore)))
+          : base.overallScore,
+      grade:
+        ai.grade === "Strong" || ai.grade === "Competitive" || ai.grade === "Needs work"
+          ? ai.grade
+          : base.grade,
+      executiveSummary: String(ai.executiveSummary ?? "").slice(0, 600) || base.summary,
+      summary: base.summary,
+      sections: (ai.sections ?? [])
+        .filter((section) => section?.name && section?.feedback)
+        .slice(0, 6)
+        .map((section) => ({
+          name: String(section.name).slice(0, 60),
+          verdict: (verdictAllowed.has(String(section.verdict).toLowerCase())
+            ? String(section.verdict).toLowerCase()
+            : "ok") as ReviewSection["verdict"],
+          feedback: String(section.feedback).slice(0, 400),
         })),
-        // Keep the deterministic checks the AI cannot see.
-        ...base.checklist.slice(0, 2),
-      ],
-      missingKeywords: (ai.missingKeywords ?? []).slice(0, 10).map(String),
-      atsTips: (ai.atsTips ?? base.atsTips).slice(0, 6).map(String),
-      skillSuggestions: (ai.skillSuggestions ?? base.skillSuggestions).slice(0, 6).map(String),
+      topStrengths: (ai.topStrengths ?? []).slice(0, 5).map(String),
+      criticalIssues: (ai.criticalIssues ?? [])
+        .filter((issue) => issue?.issue)
+        .slice(0, 4)
+        .map((issue) => ({
+          issue: String(issue.issue).slice(0, 200),
+          why: String(issue.why ?? "").slice(0, 240),
+          fix: String(issue.fix ?? "").slice(0, 240),
+        })),
+      checklist: [],
+      missingKeywords: (ai.keywordGaps ?? []).slice(0, 8).map(String),
+      atsTips: (ai.atsTips ?? []).slice(0, 5).map(String),
+      skillSuggestions: (ai.skillSuggestions ?? []).slice(0, 5).map(String),
     };
     return NextResponse.json({ review, aiGated: false });
   } catch (error) {
