@@ -4,10 +4,14 @@ import { connectDB, isDbConfigured } from "@/lib/db";
 import { JobModel } from "@/models/job";
 import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { scoreJobMatch } from "@/lib/skills";
+import { generateJson, isAiConfigured } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
+/** The optional AI re-rank adds one LLM call on top of the database reads. */
+export const maxDuration = 120;
 
 const CANDIDATE_POOL = 300;
+const AI_SHORTLIST = 25;
 
 /**
  * Match the signed-in user's stored resume against jobs in the database.
@@ -108,17 +112,75 @@ export async function POST(request: NextRequest) {
         missing: match.missing,
       };
     })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .sort((a, b) => b.score - a.score);
+
+  /**
+   * Optional AI re-rank: the heuristic pass is a cheap recall filter; the LLM
+   * then judges the shortlist semantically — equivalent experience phrased
+   * differently, transferable skills, seniority fit — and returns its own
+   * scores. Falls back silently to the heuristic order on any failure.
+   */
+  let mode: "ai" | "heuristic" = "heuristic";
+  let finalScored = scored;
+
+  if (isAiConfigured() && scored.length > 0) {
+    const shortlist = scored.slice(0, AI_SHORTLIST);
+    try {
+      const resume = `${analysis.textPreview.slice(0, 5000)}`;
+      const listings = shortlist
+        .map((entry, index) => {
+          const job = entry.job;
+          const description = (job.descriptionHtml ?? "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .slice(0, 500);
+          return `${index}. id=${job.id} | ${job.title} | ${job.company} | ${job.location} | level: ${job.level} | tags: ${(job.tags ?? []).join(", ")}\n   ${description}`;
+        })
+        .join("\n");
+
+      const ai = await generateJson<{
+        matches?: { id: string; score: number; strengths?: string[]; missing?: string[] }[];
+      }>(
+        "You are a technical recruiter scoring how well a candidate fits remote jobs available in the Asia-Pacific region.",
+        `Candidate resume:\n${resume}\n\nJob shortlist:\n${listings}\n\nScore every job 0-100 for this candidate. Judge semantic fit: equivalent experience phrased differently counts, transferable skills count, and penalise hard requirements the resume clearly lacks. "strengths" = candidate skills this job wants (max 6). "missing" = important job requirements the resume lacks (max 4). Return JSON: { "matches": [ { "id": string, "score": number, "strengths": string[], "missing": string[] } ] } — one entry per job, all ${shortlist.length} ids.`,
+        2000
+      );
+
+      const byId = new Map(
+        (ai.matches ?? [])
+          .filter((m) => m && typeof m.id === "string")
+          .map((m) => [
+            m.id,
+            {
+              score: Math.max(0, Math.min(99, Math.round(Number(m.score) || 0))),
+              strengths: (m.strengths ?? []).slice(0, 6).map(String),
+              missing: (m.missing ?? []).slice(0, 4).map(String),
+            },
+          ])
+      );
+
+      if (byId.size > 0) {
+        finalScored = shortlist.map((entry) => {
+          const adjusted = byId.get(entry.job.id);
+          return adjusted
+            ? { ...entry, ...adjusted }
+            : entry;
+        });
+        mode = "ai";
+      }
+    } catch (error) {
+      console.warn("AI re-rank failed, using heuristic order:", error);
+    }
+  }
 
   return NextResponse.json({
+    mode,
     analysis: {
       skills: resumeSkills,
       yearsExperience: resumeYears,
-      fileName: undefined,
     },
     poolSize: candidates.length,
-    matches: scored.map(({ job, score, strengths, missing }) => ({
+    matches: finalScored.slice(0, limit).map(({ job, score, strengths, missing }) => ({
       job: {
         id: job.id,
         source: job.source,

@@ -173,19 +173,25 @@ an open worldwide role.
 
 ## AI features (Phase 4)
 
-The Dashboard (`/dashboard`) turns a resume into job recommendations:
+The Dashboard (`/dashboard`) turns a resume into job recommendations.
+The AI provider is **DeepSeek** by default (`DEEPSEEK_API_KEY`, model
+`deepseek-chat`) — OpenRouter, Gemini and OpenAI are also supported
+(see `.env.example`; `AI_MODEL` overrides).
 
 | Feature | How it works | Needs AI key? |
 |---|---|---|
 | **Skill extraction** | 55-skill dictionary matched with word boundaries against the extracted resume text; years of experience parsed from phrasings like "7 years" | No |
 | **Match score per job** | Skill coverage of the job's detected requirements + seniority alignment, computed over the 300 most recent jobs | No |
+| **AI re-ranking** | The heuristic pass shortlists 25 jobs; DeepSeek then scores each semantically — equivalent experience phrased differently, transferable skills, hard requirements — and the dashboard marks results "AI-ranked" | **Yes** |
 | **Recommended jobs** | Top matches with strengths (resume skills the job wants) and missing skills | No |
 | **Resume review** | Rule-based structural/ATS checklist always runs; with an AI key it adds a role-aware critique benchmarked against live market titles | Optional |
 | **Cover letter** | Written from the stored resume + the job's description (on each job detail page) | **Yes** |
 
 Upload a PDF or text file (≤2 MB) on the Dashboard. Only extracted text is
 stored (capped, in `resumeAnalyses`) — never the file itself. Matching,
-review and the letter all read that stored analysis.
+review and the letter all read that stored analysis. If the AI call fails,
+matching silently falls back to the heuristic order and the review falls back
+to its rule-based checklist.
 
 **To enable the AI upgrade**, set one provider key (see `.env.example`) and
 redeploy — no code changes. Without a key, matching and the rule-based review

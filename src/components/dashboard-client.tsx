@@ -55,7 +55,12 @@ export function DashboardClient() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [matches, setMatches] = useState<SectionState<Match[]>>({ status: "idle" });
+  const [matches, setMatches] = useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "done"; data: Match[]; mode: "ai" | "heuristic" }
+  >({ status: "idle" });
   const [review, setReview] = useState<SectionState<Review>>({ status: "idle" });
   const [targetRole, setTargetRole] = useState("");
 
@@ -140,7 +145,11 @@ export function DashboardClient() {
         });
         return;
       }
-      setMatches({ status: "done", data: data.matches });
+      setMatches({
+        status: "done",
+        data: data.matches,
+        mode: data.mode === "ai" ? "ai" : "heuristic",
+      });
     } catch {
       setMatches({ status: "error", message: "Network error — try again." });
     }
@@ -350,9 +359,26 @@ export function DashboardClient() {
           ) : null}
           {matches.status === "done" ? (
             <section className="space-y-4">
-              <h2 className="font-heading text-lg font-semibold">
-                Recommended jobs
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="font-heading text-lg font-semibold">
+                  Recommended jobs
+                </h2>
+                <Badge
+                  variant="outline"
+                  className={`rounded-md font-normal ${
+                    matches.mode === "ai"
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : ""
+                  }`}
+                  title={
+                    matches.mode === "ai"
+                      ? "Scores judged semantically by the configured AI model"
+                      : "Rule-based skill matching — add an AI provider key for semantic ranking"
+                  }
+                >
+                  {matches.mode === "ai" ? "AI-ranked" : "Rule-based"}
+                </Badge>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {matches.data.map((match, index) => (
                   <div key={match.job.id} className="space-y-2">

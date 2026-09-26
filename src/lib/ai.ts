@@ -1,8 +1,9 @@
 /**
  * AI provider abstraction — no SDK, just fetch against the OpenAI-compatible
- * chat-completions API (OpenRouter, OpenAI) and Google's Gemini API.
+ * chat-completions API (DeepSeek, OpenRouter, OpenAI) and Google's Gemini API.
  *
  * Configure exactly one of:
+ *   DEEPSEEK_API_KEY    → https://platform.deepseek.com (very cheap, default)
  *   OPENROUTER_API_KEY  → https://openrouter.ai (one key, many models)
  *   GEMINI_API_KEY      → https://aistudio.google.com/apikey (free tier)
  *   OPENAI_API_KEY      → platform.openai.com
@@ -13,9 +14,10 @@
  * (cover letter) answer with a setup hint instead of an error page.
  */
 
-export type AiProvider = "openrouter" | "gemini" | "openai";
+export type AiProvider = "deepseek" | "openrouter" | "gemini" | "openai";
 
 export function aiProvider(): AiProvider | null {
+  if (process.env.DEEPSEEK_API_KEY) return "deepseek";
   if (process.env.OPENROUTER_API_KEY) return "openrouter";
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return "gemini";
@@ -29,10 +31,11 @@ export function isAiConfigured(): boolean {
 }
 
 export function aiNotConfiguredMessage(): string {
-  return "No AI provider is configured on the server. Add one of OPENROUTER_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY to .env.local (or the Vercel project) and redeploy.";
+  return "No AI provider is configured on the server. Add DEEPSEEK_API_KEY (platform.deepseek.com) — or OPENROUTER_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY — and redeploy.";
 }
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
+  deepseek: "deepseek-chat",
   openrouter: "openai/gpt-4o-mini",
   gemini: "gemini-2.0-flash",
   openai: "gpt-4o-mini",
@@ -40,6 +43,8 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
 
 function apiKey(provider: AiProvider): string | undefined {
   switch (provider) {
+    case "deepseek":
+      return process.env.DEEPSEEK_API_KEY;
     case "openrouter":
       return process.env.OPENROUTER_API_KEY;
     case "gemini":
@@ -54,17 +59,18 @@ function model(provider: AiProvider): string {
 }
 
 async function callOpenAiCompatible(
-  provider: "openrouter" | "openai",
+  provider: "deepseek" | "openrouter" | "openai",
   system: string,
   user: string,
   maxTokens: number
 ): Promise<string> {
-  const endpoint =
-    provider === "openrouter"
-      ? "https://openrouter.ai/api/v1/chat/completions"
-      : "https://api.openai.com/v1/chat/completions";
+  const endpoints = {
+    deepseek: "https://api.deepseek.com/chat/completions",
+    openrouter: "https://openrouter.ai/api/v1/chat/completions",
+    openai: "https://api.openai.com/v1/chat/completions",
+  } as const;
 
-  const res = await fetch(endpoint, {
+  const res = await fetch(endpoints[provider], {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
