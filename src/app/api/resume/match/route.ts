@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       const ai = await generateJson<{
         matches?: { id: string; score: number; strengths?: string[]; missing?: string[] }[];
       }>(
-        "You are a technical recruiter scoring how well a candidate fits remote jobs available in the Asia-Pacific region.",
+        "You are a technical recruiter scoring how well a candidate fits remote jobs available in the Asia-Pacific region. Always write all text fields in English, regardless of the language of the resume or job listings.",
         `Candidate resume:\n${resume}\n\nJob shortlist:\n${listings}\n\nScore every job 0-100 for this candidate. Judge semantic fit: equivalent experience phrased differently counts, transferable skills count, and penalise hard requirements the resume clearly lacks. "strengths" = candidate skills this job wants (max 6). "missing" = important job requirements the resume lacks (max 4). Return JSON: { "matches": [ { "id": string, "score": number, "strengths": string[], "missing": string[] } ] } — one entry per job, all ${shortlist.length} ids.`,
         2000
       );

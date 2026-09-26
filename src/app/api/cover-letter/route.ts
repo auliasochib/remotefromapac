@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const letter = await generateText(
-      "You write concise, specific cover letters for remote-job applicants in the Asia-Pacific region. Plain text only — no markdown, no subject line, no placeholders like [Company]. Use only facts implied by the resume and job description; never invent employers, numbers or credentials.",
+      "You write concise, specific cover letters for remote-job applicants in the Asia-Pacific region. Plain text only — no markdown, no subject line, no placeholders like [Company]. Use only facts implied by the resume and job description; never invent employers, numbers or credentials. Always write in English, regardless of the language of the resume or the job posting.",
       `Write a cover letter of 220–300 words.
 
 Job: ${job.title} at ${job.company} (${job.location})
