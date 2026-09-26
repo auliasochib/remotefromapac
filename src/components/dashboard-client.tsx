@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -750,7 +750,9 @@ export function DashboardClient() {
                 />
                 <Select
                   value={alertFrequency}
-                  onValueChange={setAlertFrequency}
+                  onValueChange={(value) => {
+                    if (value) setAlertFrequency(value);
+                  }}
                   items={{ daily: "Daily", weekly: "Weekly", instant: "Instant" }}
                 >
                   <SelectTrigger className="w-32 rounded-lg">
