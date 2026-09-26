@@ -6,6 +6,7 @@ import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { isAiConfigured, generateJson } from "@/lib/ai";
 import { SKILL_COUNT } from "@/lib/skills";
 import { getPremiumStatus } from "@/lib/premium";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -173,6 +174,16 @@ export async function POST(request: NextRequest) {
   if (!email) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // The AI pass is a paid DeepSeek call — bound it per user.
+  const limit = checkRateLimit(`review:${email}`, 10, 60 * 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   if (!isDbConfigured()) {
     return NextResponse.json(
       { error: "db_not_configured", message: "Set MONGODB_URI first." },

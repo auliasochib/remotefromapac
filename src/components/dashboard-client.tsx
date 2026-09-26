@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -15,6 +15,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { JobCard } from "@/components/job-card";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import type { Job } from "@/lib/types";
@@ -72,6 +79,12 @@ export function DashboardClient() {
   const [review, setReview] = useState<SectionState<Review>>({ status: "idle" });
   const [targetRole, setTargetRole] = useState("");
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [alerts, setAlerts] = useState<
+    { id: string; keywords: string; frequency: string }[]
+  >([]);
+  const [alertKeywords, setAlertKeywords] = useState("");
+  const [alertFrequency, setAlertFrequency] = useState("daily");
+  const [alertBusy, setAlertBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +115,50 @@ export function DashboardClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/job-alerts").catch(() => null);
+      if (!cancelled && res?.ok) {
+        const data = await res.json().catch(() => null);
+        if (!cancelled && data) setAlerts(data.alerts ?? []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function addAlert() {
+    const keywords = alertKeywords.trim();
+    if (!keywords || alertBusy) return;
+    setAlertBusy(true);
+    try {
+      const res = await fetch("/api/job-alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywords, frequency: alertFrequency }),
+      });
+      if (res.ok) {
+        setAlertKeywords("");
+        const data = await res.json();
+        setAlerts((prev) => [
+          { id: data.alert.id, keywords: data.alert.keywords, frequency: data.alert.frequency },
+          ...prev,
+        ]);
+      }
+    } finally {
+      setAlertBusy(false);
+    }
+  }
+
+  async function removeAlert(id: string) {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+    await fetch(`/api/job-alerts?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }).catch(() => undefined);
+  }
 
   async function upload(file: File) {
     setUploading(true);
@@ -666,6 +723,86 @@ export function DashboardClient() {
                   </div>
                 ) : null}
               </div>
+            </section>
+          ) : null}
+
+          {/* Job alerts */}
+          {analysis ? (
+            <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+              <h2 className="font-heading text-lg font-semibold">Job alerts</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Tell us what to watch for. Delivery to your inbox is coming
+                soon — your alert is stored today.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Input
+                  value={alertKeywords}
+                  onChange={(e) => setAlertKeywords(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addAlert();
+                    }
+                  }}
+                  placeholder="Keywords — e.g. react frontend singapore"
+                  className="min-w-56 flex-1 rounded-lg"
+                />
+                <Select
+                  value={alertFrequency}
+                  onValueChange={setAlertFrequency}
+                  items={{ daily: "Daily", weekly: "Weekly", instant: "Instant" }}
+                >
+                  <SelectTrigger className="w-32 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instant">Instant</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  className="rounded-lg"
+                  onClick={addAlert}
+                  disabled={alertBusy || !alertKeywords.trim()}
+                >
+                  {alertBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Add alert"
+                  )}
+                </Button>
+              </div>
+
+              {alerts.length > 0 ? (
+                <ul className="mt-4 space-y-2">
+                  {alerts.map((alert) => (
+                    <li
+                      key={alert.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/30 px-4 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {alert.keywords}
+                        </p>
+                        <p className="text-xs capitalize text-muted-foreground">
+                          {alert.frequency}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-lg text-muted-foreground hover:text-destructive"
+                        onClick={() => removeAlert(alert.id)}
+                        aria-label="Remove alert"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </section>
           ) : null}
         </>

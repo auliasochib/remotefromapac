@@ -14,7 +14,8 @@ const SKILL_DICTIONARY: { name: string; pattern: string }[] = [
   { name: "Vue.js", pattern: "vue(?:\\.js)?|vuejs|nuxt" },
   { name: "Angular", pattern: "angular(?:js)?" },
   { name: "TypeScript", pattern: "typescript|ts\\b" },
-  { name: "JavaScript", pattern: "javascript|js\\b|es6" },
+  // "(?<![.\\w])js" so the ".js" in "Next.js"/"app.js" is not read as plain JS
+  { name: "JavaScript", pattern: "javascript|es6|(?<![.\\w])js\\b" },
   { name: "HTML/CSS", pattern: "\\bhtml5?\\b|\\bcss3?\\b|sass|scss|tailwind" },
   { name: "Redux", pattern: "redux|zustand|mobx" },
   { name: "Svelte", pattern: "svelte" },

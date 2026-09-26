@@ -6,6 +6,7 @@ import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { getJobById } from "@/lib/jobs";
 import { aiNotConfiguredMessage, generateText, isAiConfigured } from "@/lib/ai";
 import { getPremiumStatus } from "@/lib/premium";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -22,6 +23,16 @@ export async function POST(request: NextRequest) {
   if (!email) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // Each letter is a paid DeepSeek call — keep it bounded per user.
+  const limit = checkRateLimit(`cover-letter:${email}`, 10, 60 * 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   if (!isAiConfigured()) {
     return NextResponse.json(
       { error: "ai_not_configured", message: aiNotConfiguredMessage() },

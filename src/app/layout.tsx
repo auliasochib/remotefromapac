@@ -14,12 +14,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://remotefromapac.vercel.app"),
   title: {
     default: "RemoteFromAPAC — Remote Jobs Aggregator",
     template: "%s — RemoteFromAPAC",
   },
   description:
     "Find remote jobs from multiple job boards in one searchable dashboard. Filter by type, level, category and location.",
+  openGraph: {
+    type: "website",
+    siteName: "RemoteFromAPAC",
+    url: "https://remotefromapac.vercel.app",
+    title: "RemoteFromAPAC — Remote Jobs Aggregator",
+    description:
+      "Remote roles you can take from Asia-Pacific, aggregated from multiple job boards and company career pages.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RemoteFromAPAC — Remote Jobs Aggregator",
+    description:
+      "Remote roles you can take from Asia-Pacific, aggregated from multiple job boards and company career pages.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJobs } from "@/lib/jobs";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import type { JobSort } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,15 @@ export const dynamic = "force-dynamic";
 const SORTS: JobSort[] = ["newest", "oldest", "company"];
 
 export async function GET(request: NextRequest) {
+  // Public endpoint — keep it cheap to abuse.
+  const limit = checkRateLimit(`jobs:${clientIp(request)}`, 60, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const sp = request.nextUrl.searchParams;
   const sortParam = sp.get("sort") ?? "newest";
   const sort = SORTS.includes(sortParam as JobSort)

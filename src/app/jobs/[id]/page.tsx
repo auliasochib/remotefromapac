@@ -63,8 +63,52 @@ export default async function JobDetailPage({
     },
   });
 
+  // Google Jobs structured data — plain text, not the sanitized HTML.
+  const plainDescription = description
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 5000);
+
+  const employmentTypeMap: Record<JobType, string> = {
+    "full-time": "FULL_TIME",
+    "part-time": "PART_TIME",
+    contract: "CONTRACTOR",
+    internship: "INTERN",
+    freelance: "CONTRACTOR",
+    other: "OTHER",
+  };
+
+  const jobPostingJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    title: job.title,
+    description: plainDescription,
+    datePosted: job.publishedAt,
+    employmentType: employmentTypeMap[job.jobType],
+    directApply: true,
+    hiringOrganization: {
+      "@type": "Organization",
+      name: job.company,
+    },
+    jobLocationType: "TELECOMMUTE",
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressRegion: job.location,
+      },
+    },
+    url: `https://remotefromapac.vercel.app/jobs/${encodeURIComponent(job.id)}`,
+    sameAs: job.applyUrl,
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd) }}
+      />
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">

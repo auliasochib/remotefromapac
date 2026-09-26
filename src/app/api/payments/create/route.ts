@@ -10,6 +10,7 @@ import {
   midtransPriceIdr,
   midtransSearchPriceIdr,
 } from "@/lib/midtrans";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
   const email = session?.user?.email;
   if (!email) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const limit = checkRateLimit(`payments-create:${email}`, 10, 60 * 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
   }
   if (!isDbConfigured()) {
     return NextResponse.json(

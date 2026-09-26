@@ -35,20 +35,32 @@ export default async function Home() {
               Remote roles gathered from job boards and company career pages,
               filtered to what you can take from Asia–Pacific.
             </p>
-            <div className="flex items-center gap-4 text-sm">
-              <Link
-                href="/saved"
-                className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                Saved jobs
-              </Link>
-              <Link
-                href="/signin"
-                className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                Sign in
-              </Link>
-            </div>
+          <div className="flex items-center gap-4 text-sm">
+            <Link
+              href="/dashboard"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              AI Dashboard
+            </Link>
+            <Link
+              href="/saved"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Saved jobs
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Terms
+            </Link>
+          </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
