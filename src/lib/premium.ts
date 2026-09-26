@@ -65,6 +65,38 @@ export async function grantPremium(
   return premiumUntil;
 }
 
+/** Add one pay-per-use AI search credit. */
+export async function grantSearchCredit(email: string): Promise<number> {
+  await connectDB();
+  const user = await UserModel.findOneAndUpdate(
+    { email },
+    { $inc: { credits: 1 }, $setOnInsert: { plan: "free" } },
+    { upsert: true, new: true }
+  ).lean<{ credits: number } | null>();
+  return user?.credits ?? 0;
+}
+
+/**
+ * Spend one credit on an AI search. Returns the remaining balance,
+ * or -1 when the user has no credit to spend.
+ */
+export async function consumeSearchCredit(email: string): Promise<number> {
+  await connectDB();
+  const user = await UserModel.findOneAndUpdate(
+    { email, credits: { $gte: 1 } },
+    { $inc: { credits: -1 } },
+    { new: true }
+  ).lean<{ credits: number } | null>();
+  return user ? user.credits : -1;
+}
+
+export async function getCredits(email: string): Promise<number> {
+  if (!process.env.MONGODB_URI) return 0;
+  await connectDB();
+  const user = await UserModel.findOne({ email }).lean<{ credits?: number } | null>();
+  return user?.credits ?? 0;
+}
+
 /** True when the AI call about to be made may charge the AI provider. */
 export async function aiFeatureAllowed(email: string): Promise<boolean> {
   return getPremiumStatus(email).then((status) => status.premium);

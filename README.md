@@ -206,23 +206,25 @@ can compile matches per alert once a channel exists.
 
 ## Monetization (Midtrans)
 
-The plan split is implemented:
+The plan split is implemented, with **pay-per-use** on top:
 
 | Plan | Features |
 |---|---|
 | **Free** | Browse, search, filters, save jobs, rule-based match score, rule-based resume review |
-| **Premium** (Rp 99.000 / 30 hari) | AI-ranked matches, AI resume review, AI cover letters |
+| **Pay-per-search** (Rp 9.900 / 1x) | One AI-ranked search credit, no subscription |
+| **Premium** (Rp 99.000 / 30 hari) | Unlimited AI-ranked matches, AI resume review, AI cover letters |
 
 When a signed-in free user clicks **Find matching jobs**, **Review resume**, or
 **Generate cover letter**, the results that need no AI still render and the
 **Midtrans Snap payment prompt opens automatically** (QRIS, GoPay, bank
-transfer, cards).
+transfer, cards) with both options — pay for one search or go premium.
 
-Flow: `POST /api/payments/create` mints a Snap token server-side → the client
-opens `snap.js` → payment confirmation arrives at `POST /api/payments/webhook`
-(sha512 signature verified, amount cross-checked) → the user's
-`premiumUntil` is extended by 30 days. See `src/lib/midtrans.ts` and the
-`payments` collection.
+Flow: `POST /api/payments/create {plan: "search"|"premium"}` mints a Snap token
+server-side → the client opens `snap.js` → payment confirmation arrives at
+`POST /api/payments/webhook` (sha512 signature verified, amount cross-checked)
+→ either one `credits` balance is granted (spent only on a successful AI run,
+via an atomic `$inc` guarded by `credits >= 1`) or `premiumUntil` is extended
+by 30 days. See `src/lib/midtrans.ts` and the `payments` collection.
 
 To enable payments:
 

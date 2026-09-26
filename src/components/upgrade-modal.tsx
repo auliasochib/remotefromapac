@@ -62,20 +62,25 @@ export function UpgradeModal({
     "details" | "creating" | "paying" | "success" | "error" | "not-configured"
   >("details");
   const [message, setMessage] = useState("");
+  const [plan, setPlan] = useState<"search" | "premium">("search");
+  const [searchPriceIdr, setSearchPriceIdr] = useState<number | null>(null);
   const [priceIdr, setPriceIdr] = useState<number | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
-      // Reset any previous run, then load the live price and plan state.
+      // Reset any previous run, then load the live prices and plan state.
       try {
         const res = await fetch("/api/payments/status");
         const data = res.ok ? await res.json() : null;
         if (cancelled) return;
         setPhase("details");
         setMessage("");
+        if (data?.searchPriceIdr) setSearchPriceIdr(data.searchPriceIdr);
         if (data?.priceIdr) setPriceIdr(data.priceIdr);
+        if (typeof data?.credits === "number") setCredits(data.credits);
         if (data?.premium) setPhase("success");
         if (data && data.paymentEnabled === false) setPhase("not-configured");
       } catch {
@@ -89,14 +94,20 @@ export function UpgradeModal({
 
   if (!open) return null;
 
-  const priceLabel = priceIdr
-    ? `Rp ${(priceIdr / 1000).toLocaleString("id-ID")}.000`
-    : "Rp 99.000";
+  const rupiah = (value: number | null, fallback: string) =>
+    value ? `Rp ${value.toLocaleString("id-ID")}` : fallback;
+  const searchPrice = rupiah(searchPriceIdr, "Rp 9.900");
+  const premiumPrice = rupiah(priceIdr, "Rp 99.000");
 
-  async function startPayment() {
+  async function startPayment(chosen: "search" | "premium") {
+    setPlan(chosen);
     setPhase("creating");
     try {
-      const res = await fetch("/api/payments/create", { method: "POST" });
+      const res = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: chosen }),
+      });
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 400 && data.error === "already_premium") {
@@ -122,12 +133,20 @@ export function UpgradeModal({
       window.snap.pay(data.token, {
         onSuccess: () => {
           setPhase("success");
+          setMessage(
+            plan === "search"
+              ? "1 kredit AI search siap dipakai."
+              : "Semua fitur AI sudah terbuka selama 30 hari."
+          );
           onUpgraded?.();
         },
         onPending: () => {
           setPhase("success");
           setMessage(
-            "Payment pending — premium activates automatically once Midtrans confirms it (usually seconds after payment)."
+            (plan === "search"
+              ? "1 kredit AI search"
+              : "Premium 30 hari") +
+              " akan aktif otomatis begitu Midtrans mengonfirmasi pembayaran."
           );
           onUpgraded?.();
         },
@@ -175,29 +194,17 @@ export function UpgradeModal({
             Unlock AI job matching
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            One payment, 30 days of full access. Cancel by simply not renewing.
+            Bayar per pencarian, atau ambil premium untuk akses penuh.
           </p>
-
-          <ul className="mt-5 space-y-2.5">
-            {PREMIUM_PERKS.map((perk) => (
-              <li key={perk} className="flex items-start gap-2 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                {perk}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-6 flex items-baseline gap-2">
-            <span className="font-heading text-3xl font-bold">{priceLabel}</span>
-            <span className="text-sm text-muted-foreground">/ 30 hari</span>
-          </div>
 
           {phase === "success" ? (
             <div className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
               <p className="font-medium text-emerald-700 dark:text-emerald-400">
-                Premium aktif 🎉
+                Terima kasih! 🎉
               </p>
-              <p className="mt-1 text-muted-foreground">{message || "Semua fitur AI sudah terbuka."}</p>
+              <p className="mt-1 text-muted-foreground">
+                {message || "Fitur AI sudah terbuka."}
+              </p>
               <Button className="mt-3 w-full rounded-lg" onClick={onClose}>
                 <Sparkles className="mr-1.5 h-4 w-4" /> Mulai pakai AI
               </Button>
@@ -218,27 +225,93 @@ export function UpgradeModal({
               <Button
                 variant="outline"
                 className="mt-3 w-full rounded-lg"
-                onClick={startPayment}
+                onClick={() => startPayment(plan)}
               >
                 Try again
               </Button>
             </div>
           ) : (
-            <Button
-              size="lg"
-              className="mt-5 w-full rounded-xl shadow-md shadow-violet-500/20"
-              onClick={startPayment}
-              disabled={phase === "creating" || phase === "paying"}
-            >
-              {phase === "creating" || phase === "paying" ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {phase === "creating" ? "Menyiapkan pembayaran…" : "Menunggu pembayaran…"}
-                </>
-              ) : (
-                <>Bayar dengan Midtrans — {priceLabel}</>
-              )}
-            </Button>
+            <>
+              {/* Plan options */}
+              <div className="mt-5 space-y-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPlan("search")}
+                  className={`w-full rounded-xl border p-3.5 text-left transition-colors ${
+                    plan === "search"
+                      ? "border-primary/50 bg-primary/5 ring-1 ring-primary/30"
+                      : "border-border/70 hover:border-primary/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">
+                      Bayar per pencarian
+                    </span>
+                    <span className="font-heading text-sm font-bold">
+                      {searchPrice}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    1x AI-ranked search · tanpa langganan
+                    {typeof credits === "number" && credits > 0
+                      ? ` · kamu punya ${credits} kredit`
+                      : ""}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPlan("premium")}
+                  className={`w-full rounded-xl border p-3.5 text-left transition-colors ${
+                    plan === "premium"
+                      ? "border-primary/50 bg-primary/5 ring-1 ring-primary/30"
+                      : "border-border/70 hover:border-primary/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">
+                      Premium 30 hari
+                    </span>
+                    <span className="font-heading text-sm font-bold">
+                      {premiumPrice}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Unlimited AI search + review + cover letter
+                  </p>
+                </button>
+              </div>
+
+              <ul className="mt-4 space-y-1.5">
+                {PREMIUM_PERKS.map((perk) => (
+                  <li
+                    key={perk}
+                    className="flex items-start gap-2 text-xs text-muted-foreground"
+                  >
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                size="lg"
+                className="mt-5 w-full rounded-xl shadow-md shadow-violet-500/20"
+                onClick={() => startPayment(plan)}
+                disabled={phase === "creating" || phase === "paying"}
+              >
+                {phase === "creating" || phase === "paying" ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {phase === "creating" ? "Menyiapkan pembayaran…" : "Menunggu pembayaran…"}
+                  </>
+                ) : (
+                  <>
+                    Bayar {plan === "search" ? searchPrice : premiumPrice} — Midtrans
+                  </>
+                )}
+              </Button>
+            </>
           )}
 
           <p className="mt-3 text-center text-xs text-muted-foreground">

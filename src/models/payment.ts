@@ -7,6 +7,12 @@ const PaymentSchema = new Schema(
     user: { type: String, required: true, index: true },
     amount: { type: Number, required: true },
     currency: { type: String, default: "IDR" },
+    /** "premium" = 30-day pass, "search" = single AI search credit. */
+    type: {
+      type: String,
+      enum: ["premium", "search"],
+      default: "premium",
+    },
     status: {
       type: String,
       enum: ["pending", "paid", "failed", "expired"],

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, isDbConfigured } from "@/lib/db";
 import { PaymentModel } from "@/models/payment";
-import { grantPremium } from "@/lib/premium";
+import { grantPremium, grantSearchCredit } from "@/lib/premium";
 import { verifyWebhookSignature } from "@/lib/midtrans";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
   const payment = await PaymentModel.findOne({ orderId }).lean<{
     user: string;
     amount: number;
+    type?: "premium" | "search";
     status: string;
   } | null>();
   if (!payment) {
@@ -72,11 +73,20 @@ export async function POST(request: NextRequest) {
     transactionStatus === "settlement"
   ) {
     if (payment.status !== "paid") {
-      const premiumUntil = await grantPremium(payment.user);
-      await PaymentModel.updateOne(
-        { orderId },
-        { $set: { status: "paid", paidAt: new Date(), premiumUntil } }
-      );
+      if (payment.type === "search") {
+        // Pay-per-use: grant one AI search credit.
+        await grantSearchCredit(payment.user);
+        await PaymentModel.updateOne(
+          { orderId },
+          { $set: { status: "paid", paidAt: new Date() } }
+        );
+      } else {
+        const premiumUntil = await grantPremium(payment.user);
+        await PaymentModel.updateOne(
+          { orderId },
+          { $set: { status: "paid", paidAt: new Date(), premiumUntil } }
+        );
+      }
     }
   } else if (["expire", "cancel", "deny"].includes(transactionStatus)) {
     await PaymentModel.updateOne(

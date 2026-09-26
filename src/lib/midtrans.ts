@@ -25,6 +25,12 @@ export function midtransPriceIdr(): number {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 99_000;
 }
 
+/** Price for a single AI search credit (pay-per-use). */
+export function midtransSearchPriceIdr(): number {
+  const parsed = Number(process.env.MIDTRANS_SEARCH_PRICE_IDR);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 9_900;
+}
+
 function isProduction(): boolean {
   return process.env.MIDTRANS_IS_PRODUCTION === "true";
 }
@@ -46,12 +52,13 @@ export interface SnapResult {
   redirectUrl?: string;
 }
 
-/** Mint a Snap transaction token for a one-time premium payment. */
+/** Mint a Snap transaction token for a one-time payment. */
 export async function createSnapTransaction(input: {
   orderId: string;
   amountIdr: number;
   email: string;
   name?: string | null;
+  itemName: string;
 }): Promise<SnapResult> {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
   if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY is not configured");
@@ -71,8 +78,8 @@ export async function createSnapTransaction(input: {
       },
       item_details: [
         {
-          id: "premium-30d",
-          name: "RemoteFromAPAC Premium (30 hari)",
+          id: input.orderId.slice(0, 20),
+          name: input.itemName,
           price: input.amountIdr,
           quantity: 1,
         },

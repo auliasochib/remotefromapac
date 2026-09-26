@@ -1,19 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB, isDbConfigured } from "@/lib/db";
 import { ensureUser } from "@/models/user";
 import { PaymentModel } from "@/models/payment";
-import { getPremiumStatus } from "@/lib/premium";
+import { getPremiumStatus, getCredits } from "@/lib/premium";
 import {
   createSnapTransaction,
   midtransConfigured,
   midtransPriceIdr,
+  midtransSearchPriceIdr,
 } from "@/lib/midtrans";
 
 export const dynamic = "force-dynamic";
 
-/** Mint a Midtrans Snap token for the signed-in free user. */
-export async function POST() {
+/**
+ * Mint a Midtrans Snap token.
+ * Body: { plan: "search" | "premium" } — "search" buys one AI search credit
+ * (pay-per-use), "premium" buys 30 days of unlimited AI features.
+ */
+export async function POST(request: NextRequest) {
   const session = await auth();
   const email = session?.user?.email;
   if (!email) {
@@ -36,11 +41,31 @@ export async function POST() {
     );
   }
 
+  let plan: "search" | "premium" = "premium";
+  try {
+    const body = await request.json();
+    if (body?.plan === "search") plan = "search";
+  } catch {
+    // default premium
+  }
+
   await connectDB();
-  const status = await getPremiumStatus(email);
+  const [status, credits] = await Promise.all([
+    getPremiumStatus(email),
+    plan === "search" ? getCredits(email) : Promise.resolve(0),
+  ]);
   if (status.premium) {
     return NextResponse.json(
       { error: "already_premium", message: "You are already premium." },
+      { status: 400 }
+    );
+  }
+  if (plan === "search" && credits >= 1) {
+    return NextResponse.json(
+      {
+        error: "credit_available",
+        message: "You already have an unused search credit.",
+      },
       { status: 400 }
     );
   }
@@ -52,8 +77,14 @@ export async function POST() {
     image: session.user?.image ?? null,
   });
 
-  const amount = midtransPriceIdr();
-  const orderId = `RFA-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const amount = plan === "search" ? midtransSearchPriceIdr() : midtransPriceIdr();
+  const orderId = `RFA-${plan === "search" ? "S" : "P"}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+  const itemName =
+    plan === "search"
+      ? "RemoteFromAPAC — 1x AI job search"
+      : "RemoteFromAPAC Premium (30 hari)";
 
   try {
     const snap = await createSnapTransaction({
@@ -61,12 +92,14 @@ export async function POST() {
       amountIdr: amount,
       email,
       name: session.user?.name ?? null,
+      itemName,
     });
 
     await PaymentModel.create({
       orderId,
       user: email,
       amount,
+      type: plan,
       status: "pending",
       snapToken: snap.token,
     });
@@ -74,6 +107,7 @@ export async function POST() {
     return NextResponse.json({
       ok: true,
       orderId,
+      plan,
       amount,
       token: snap.token,
       redirectUrl: snap.redirectUrl ?? null,

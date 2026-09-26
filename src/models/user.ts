@@ -14,6 +14,8 @@ const UserSchema = new Schema(
     plan: { type: String, default: "free", index: true },
     /** Set by the Midtrans webhook when a premium payment settles. */
     premiumUntil: { type: Date, default: null, index: true },
+    /** Pay-per-use balance: 1 credit = 1 AI-ranked search. */
+    credits: { type: Number, default: 0 },
     lastSeenAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
