@@ -5,6 +5,7 @@ import { JobModel } from "@/models/job";
 import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { isAiConfigured, generateJson } from "@/lib/ai";
 import { SKILL_COUNT } from "@/lib/skills";
+import { getPremiumStatus } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -177,8 +178,12 @@ export async function POST(request: NextRequest) {
     analysis.yearsExperience
   );
 
-  if (!isAiConfigured()) {
-    return NextResponse.json({ review: base });
+  const { premium } = await getPremiumStatus(email);
+  // The AI critique is premium; free users get the rule-based review plus
+  // aiGated so the UI can show the upgrade prompt.
+  const aiGated = !premium;
+  if (!isAiConfigured() || !premium) {
+    return NextResponse.json({ review: base, aiGated });
   }
 
   // AI pass: re-frame the critique against the target role and suggest
@@ -218,7 +223,7 @@ export async function POST(request: NextRequest) {
       atsTips: (ai.atsTips ?? base.atsTips).slice(0, 6).map(String),
       skillSuggestions: (ai.skillSuggestions ?? base.skillSuggestions).slice(0, 6).map(String),
     };
-    return NextResponse.json({ review });
+    return NextResponse.json({ review, aiGated: false });
   } catch (error) {
     console.error("AI review failed, falling back to heuristic:", error);
     return NextResponse.json({
@@ -226,6 +231,7 @@ export async function POST(request: NextRequest) {
         ...base,
         summary: `${base.summary} (AI review was unavailable: ${String(error).slice(0, 120)})`,
       },
+      aiGated: false,
     });
   }
 }

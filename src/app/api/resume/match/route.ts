@@ -5,6 +5,7 @@ import { JobModel } from "@/models/job";
 import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { scoreJobMatch } from "@/lib/skills";
 import { generateJson, isAiConfigured } from "@/lib/ai";
+import { getPremiumStatus } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 /** The optional AI re-rank adds one LLM call on top of the database reads. */
@@ -118,12 +119,16 @@ export async function POST(request: NextRequest) {
    * Optional AI re-rank: the heuristic pass is a cheap recall filter; the LLM
    * then judges the shortlist semantically — equivalent experience phrased
    * differently, transferable skills, seniority fit — and returns its own
-   * scores. Falls back silently to the heuristic order on any failure.
+   * scores. Premium-only: free users get the heuristic order plus an
+   * aiGated flag so the UI can show the upgrade prompt. Falls back silently
+   * to the heuristic order on any AI failure.
    */
+  const { premium } = await getPremiumStatus(email);
   let mode: "ai" | "heuristic" = "heuristic";
   let finalScored = scored;
+  const aiGated = isAiConfigured() && !premium;
 
-  if (isAiConfigured() && scored.length > 0) {
+  if (premium && isAiConfigured() && scored.length > 0) {
     const shortlist = scored.slice(0, AI_SHORTLIST);
     try {
       const resume = `${analysis.textPreview.slice(0, 5000)}`;
@@ -175,6 +180,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     mode,
+    aiGated,
     analysis: {
       skills: resumeSkills,
       yearsExperience: resumeYears,

@@ -5,6 +5,7 @@ import { JobModel } from "@/models/job";
 import { ResumeAnalysisModel } from "@/models/resume-analysis";
 import { getJobById } from "@/lib/jobs";
 import { aiNotConfiguredMessage, generateText, isAiConfigured } from "@/lib/ai";
+import { getPremiumStatus } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -25,6 +26,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "ai_not_configured", message: aiNotConfiguredMessage() },
       { status: 503 }
+    );
+  }
+
+  // Premium feature per the monetization plan — free users get the upgrade
+  // prompt (Midtrans Snap) from the client.
+  const { premium } = await getPremiumStatus(email);
+  if (!premium) {
+    return NextResponse.json(
+      { error: "payment_required", message: "Cover letters are a Premium feature." },
+      { status: 402 }
     );
   }
   if (!isDbConfigured()) {

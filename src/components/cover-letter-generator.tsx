@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Copy, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 type State =
   | { status: "idle" }
@@ -14,6 +15,7 @@ type State =
 export function CoverLetterGenerator({ jobId }: { jobId: string }) {
   const [state, setState] = useState<State>({ status: "idle" });
   const [copied, setCopied] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   async function generate() {
     setState({ status: "loading" });
@@ -31,6 +33,12 @@ export function CoverLetterGenerator({ jobId }: { jobId: string }) {
           code: "unauthorized",
           message: "Sign in (and upload your resume on the Dashboard) to generate a cover letter.",
         });
+        return;
+      }
+      if (res.status === 402) {
+        // Premium feature — open the Midtrans upgrade prompt.
+        setPaywallOpen(true);
+        setState({ status: "idle" });
         return;
       }
       if (res.status === 409) {
@@ -129,6 +137,8 @@ export function CoverLetterGenerator({ jobId }: { jobId: string }) {
           Requires an AI provider key.
         </p>
       ) : null}
+
+      <UpgradeModal open={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </div>
   );
 }

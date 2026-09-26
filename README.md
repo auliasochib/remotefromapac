@@ -204,6 +204,38 @@ frequency. Delivery is not wired yet — it needs a provider credential:
 Resend (email), a Telegram bot token, or a web-push VAPID key. The daily cron
 can compile matches per alert once a channel exists.
 
+## Monetization (Midtrans)
+
+The plan split is implemented:
+
+| Plan | Features |
+|---|---|
+| **Free** | Browse, search, filters, save jobs, rule-based match score, rule-based resume review |
+| **Premium** (Rp 99.000 / 30 hari) | AI-ranked matches, AI resume review, AI cover letters |
+
+When a signed-in free user clicks **Find matching jobs**, **Review resume**, or
+**Generate cover letter**, the results that need no AI still render and the
+**Midtrans Snap payment prompt opens automatically** (QRIS, GoPay, bank
+transfer, cards).
+
+Flow: `POST /api/payments/create` mints a Snap token server-side → the client
+opens `snap.js` → payment confirmation arrives at `POST /api/payments/webhook`
+(sha512 signature verified, amount cross-checked) → the user's
+`premiumUntil` is extended by 30 days. See `src/lib/midtrans.ts` and the
+`payments` collection.
+
+To enable payments:
+
+1. Get keys from [Midtrans](https://dashboard.midtrans.com) (sandbox first,
+   then production) and set `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`,
+   `MIDTRANS_IS_PRODUCTION`
+2. In the Midtrans dashboard → Settings → Configuration → Payment Notification
+   URL, set `https://<your-domain>/api/payments/webhook`
+3. Redeploy
+
+Free testing: sandbox keys + card `4811 1111 1111 1114`, any future expiry, any
+CVV. Your own account can be exempted with `PREMIUM_BYPASS_EMAILS`.
+
 ## Job schema
 
 The stored document (`jobs` collection, `src/models/job.ts`) against the

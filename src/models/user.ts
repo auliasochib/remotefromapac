@@ -12,6 +12,8 @@ const UserSchema = new Schema(
     image: String,
     /** Monetization hook: "free" | "premium". Not enforced during beta. */
     plan: { type: String, default: "free", index: true },
+    /** Set by the Midtrans webhook when a premium payment settles. */
+    premiumUntil: { type: Date, default: null, index: true },
     lastSeenAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

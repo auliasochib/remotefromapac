@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JobCard } from "@/components/job-card";
+import { UpgradeModal } from "@/components/upgrade-modal";
 import type { Job } from "@/lib/types";
 
 interface Analysis {
@@ -63,6 +64,7 @@ export function DashboardClient() {
   >({ status: "idle" });
   const [review, setReview] = useState<SectionState<Review>>({ status: "idle" });
   const [targetRole, setTargetRole] = useState("");
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +152,9 @@ export function DashboardClient() {
         data: data.matches,
         mode: data.mode === "ai" ? "ai" : "heuristic",
       });
+      // Free plan: show the results, then surface the Midtrans upgrade prompt
+      // automatically — AI ranking is a premium feature.
+      if (data.aiGated) setPaywallOpen(true);
     } catch {
       setMatches({ status: "error", message: "Network error — try again." });
     }
@@ -172,6 +177,8 @@ export function DashboardClient() {
         return;
       }
       setReview({ status: "done", data: data.review });
+      // Premium feature: prompt the upgrade for free users.
+      if (data.aiGated) setPaywallOpen(true);
     } catch {
       setReview({ status: "error", message: "Network error — try again." });
     }
@@ -491,6 +498,12 @@ export function DashboardClient() {
           ) : null}
         </>
       ) : null}
+
+      <UpgradeModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onUpgraded={() => window.location.reload()}
+      />
     </div>
   );
 }
