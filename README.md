@@ -8,14 +8,20 @@ can actually take.
 
 ## Features
 
-- **Job listings** from five job boards — [We Work Remotely](https://weworkremotely.com) (RSS), [RemoteOK](https://remoteok.com) (JSON API), [Remotive](https://remotive.com), [Arbeitnow](https://www.arbeitnow.com), [Jobicy](https://jobicy.com) — plus 13 **company career pages** via the public Greenhouse, Lever and Ashby job-board APIs
+- **Job listings** from job boards — [We Work Remotely](https://weworkremotely.com) (RSS), [RemoteOK](https://remoteok.com) (JSON API), [Remotive](https://remotive.com), [Arbeitnow](https://www.arbeitnow.com), [Jobicy](https://jobicy.com), [Adzuna](https://www.adzuna.com) (official API, free key) — plus **18 company career pages** via the public Greenhouse, Lever and Ashby job-board APIs
+- **Strictly APAC-located**: only roles physically based in Asia-Pacific countries are stored — worldwide-remote postings are excluded by policy
 - **Stored in MongoDB** and refreshed by a sync job, so reads are fast and the board survives an upstream outage
-- **APAC focus**: only roles located in APAC or open worldwide-remote are ingested, and jobs located in the region get an APAC badge
-- **Search** by keyword (title, company, category, description)
-- **Filters**: location (incl. APAC-located only), job type, experience level, category, and source; plus sort by newest / oldest / company
+- **Search** by keyword (title, company, category, tags, description)
+- **Filters**: location within APAC, job type, experience level, category, and source; plus sort by newest / oldest / company
 - **Job detail page** with the full description and an *Apply* button that redirects to the original posting
 - **User accounts** via Auth.js (GitHub / Google OAuth)
 - **Saved jobs** in MongoDB — bookmark roles and manage them on the Saved page
+
+### Company career pages currently ingested
+
+Greenhouse: GitLab, Canonical, Remote.com, Elastic, Vercel, Cloudflare, Proton,
+Stripe, Coinbase, MongoDB, Datadog, Twilio · Lever: Toptal · Ashby: OpenAI,
+Ramp, Zapier, Buffer, Supabase
 
 ### Sourcing policy — no scraping
 
@@ -164,12 +170,14 @@ scripts/sync-jobs.ts          # `npm run sync`
 
 | Classification | Meaning | Ingested? |
 |---|---|---|
-| `apac` | Located in, or explicitly open to, an APAC country (countries, major cities and region names are matched with word boundaries) | Yes |
-| `worldwide` | Open anywhere — reachable from APAC | Yes |
+| `apac` | Located in, or explicitly open to, an APAC country (countries, major cities and region names are matched with word boundaries) | **Yes — the only bucket stored** |
+| `worldwide` | Open anywhere ("Anywhere in the World") | No — excluded by policy |
 | `restricted` | Limited to a region that excludes APAC (US-only, EMEA, Europe, …) | No |
 
 Explicit exclusions are checked first, so `Remote - US only` is not mistaken for
-an open worldwide role.
+an open worldwide role. To also admit worldwide-remote postings, widen the
+ingest filter in `src/lib/sync.ts` from `job.apac !== "apac"` to
+`job.apac === "restricted"`.
 
 ## AI features (Phase 4)
 

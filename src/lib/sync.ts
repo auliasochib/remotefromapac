@@ -9,6 +9,7 @@ import {
   fetchCompanyBoards,
   fetchRemoteOk,
   fetchWeWorkRemotely,
+  fetchAdzuna,
 } from "./sources";
 import type { Job, JobSource } from "./types";
 
@@ -41,6 +42,7 @@ const SOURCE_LOADERS: {
     owns: ["greenhouse", "lever", "ashby"],
     load: () => fetchCompanyBoards(),
   },
+  { name: "adzuna", owns: ["adzuna"], load: () => fetchAdzuna() },
 ];
 
 export interface SyncResult {
@@ -104,8 +106,10 @@ export async function syncJobs(): Promise<SyncResult> {
   const keep: Job[] = [];
 
   for (const job of all) {
-    // Only APAC-reachable roles belong in this database.
-    if (job.apac === "restricted") {
+    // This board is strictly APAC-located: worldwide-remote postings are not
+    // stored, per product decision. The classifier's "worldwide" bucket is
+    // dropped here along with "restricted".
+    if (job.apac !== "apac") {
       skippedNonApac++;
       continue;
     }

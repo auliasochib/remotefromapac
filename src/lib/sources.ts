@@ -285,6 +285,123 @@ export async function fetchRemoteOk(): Promise<Job[]> {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Adzuna — official jobs API, strong APAC country coverage                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Adzuna's API is free with a key (developer.adzuna.com) and covers many APAC
+ * countries. Adzuna indexes on-site roles too, so only postings whose title or
+ * description mentions remote work are kept — the APAC location check happens
+ * in the sync pipeline like every other source.
+ *
+ * Requires: ADZUNA_APP_ID + ADZUNA_API_KEY
+ */
+const ADZUNA_COUNTRIES = ["sg", "in", "au", "nz", "hk", "ph", "th", "vn", "my", "id"];
+
+interface AdzunaJob {
+  id: string;
+  title?: string;
+  description?: string;
+  redirect_url?: string;
+  location?: { display_name?: string };
+  company?: { display_name?: string };
+  salary_min?: number;
+  salary_max?: number;
+  created?: string;
+}
+
+/** Adzuna returns salary in the posting's local currency — show a neutral range. */
+function adzunaSalary(min?: number, max?: number): string | null {
+  if (!min && !max) return null;
+  const short = (n: number) =>
+    n >= 1000 ? `${Math.round(n / 1000)}k` : `${Math.round(n)}`;
+  if (min && max) return `${short(min)} - ${short(max)} / yr`;
+  return `${short((max ?? min) as number)} / yr`;
+}
+
+export async function fetchAdzuna(): Promise<Job[]> {
+  const appId = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_API_KEY;
+  if (!appId || !appKey) {
+    throw new Error("Adzuna keys not configured (ADZUNA_APP_ID / ADZUNA_API_KEY)");
+  }
+
+  const responses = await Promise.allSettled(
+    ADZUNA_COUNTRIES.map(async (country) => {
+      const params = new URLSearchParams({
+        app_id: appId,
+        app_key: appKey,
+        results_per_page: "50",
+        what: "remote",
+        max_days_old: "14",
+      });
+      const res = await fetch(
+        `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`,
+        { headers: REQUEST_HEADERS, cache: "no-store" }
+      );
+      if (!res.ok) throw new Error(`Adzuna ${country}: HTTP ${res.status}`);
+      return { country, data: (await res.json()) as { results?: AdzunaJob[] } };
+    })
+  );
+
+  const jobs: Job[] = [];
+  const seen = new Set<string>();
+  let failures = 0;
+
+  for (const result of responses) {
+    if (result.status === "rejected") {
+      failures++;
+      continue;
+    }
+    const { country, data } = result.value;
+    for (const raw of data.results ?? []) {
+      const url = raw.redirect_url;
+      const dedupeKey = `${country}-${raw.id}`;
+      if (!url || seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      const title = (raw.title ?? "").replace(/<[^>]*>/g, "").trim();
+      if (!title) continue;
+
+      const description = raw.description ?? "";
+      // Adzuna indexes on-site roles too — require explicit remote wording.
+      if (!/remote|work from home|\bwfh\b/i.test(`${title} ${description}`)) {
+        continue;
+      }
+
+      const location = raw.location?.display_name || country.toUpperCase();
+
+      jobs.push({
+        id: `adzuna-${country}-${raw.id}`,
+        source: "adzuna",
+        title,
+        company: raw.company?.display_name ?? "Unknown company",
+        companyLogo: null,
+        applyUrl: url,
+        location,
+        region: regionForLocation(location),
+        apac: apacEligibility(location),
+        jobType: normalizeJobType("", textForType(title, description)),
+        category: normalizeCategory(undefined, [], title),
+        tags: normalizeTags(),
+        level: levelForTitle(title),
+        salary: adzunaSalary(raw.salary_min, raw.salary_max),
+        descriptionHtml: capHtml(description),
+        publishedAt: toIso(raw.created),
+      });
+    }
+  }
+
+  if (jobs.length === 0 && failures === ADZUNA_COUNTRIES.length) {
+    throw new Error(`Adzuna unreachable for all ${failures} countries`);
+  }
+  if (failures > 0) {
+    console.warn(`Adzuna: ${failures}/${ADZUNA_COUNTRIES.length} country queries failed`);
+  }
+  return jobs;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Company career pages — via each ATS vendor's public job-board API           */
 /* -------------------------------------------------------------------------- */
 
@@ -301,11 +418,16 @@ const GREENHOUSE_BOARDS = [
   "vercel",
   "cloudflare",
   "proton",
+  "stripe",
+  "coinbase",
+  "mongodb",
+  "datadog",
+  "twilio",
 ];
 
 const LEVER_BOARDS = ["toptal"];
 
-const ASHBY_BOARDS = ["openai", "ramp", "zapier", "buffer"];
+const ASHBY_BOARDS = ["openai", "ramp", "zapier", "buffer", "supabase"];
 
 interface GreenhouseJob {
   id: number;

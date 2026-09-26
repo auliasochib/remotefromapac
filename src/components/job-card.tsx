@@ -90,12 +90,6 @@ export function JobCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {job.apac === "apac" ? (
-          <Badge className="rounded-md border-transparent bg-gradient-to-r from-violet-600 to-fuchsia-500 font-medium text-white">
-            <MapPin className="h-3 w-3" />
-            APAC
-          </Badge>
-        ) : null}
         <Badge className="rounded-md border-transparent bg-primary/10 font-medium text-primary hover:bg-primary/15 dark:bg-primary/15">
           {TYPE_LABELS[job.jobType]}
         </Badge>

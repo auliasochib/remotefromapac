@@ -62,12 +62,10 @@ const CATEGORY_OPTIONS = [
   { value: "Other", label: "Other" },
 ];
 
-// The board holds only roles reachable from APAC, so regions that never appear
-// there (Europe, Americas, Africa) are not offered as filters.
+// Every stored role is located in the Asia-Pacific region, so the location
+// filter narrows within APAC rather than across continents.
 const REGION_OPTIONS = [
-  { value: "all", label: "Anywhere" },
-  { value: "apac", label: "APAC located" },
-  { value: "Worldwide", label: "Worldwide" },
+  { value: "all", label: "Anywhere in APAC" },
   { value: "Asia", label: "Asia" },
   { value: "Oceania", label: "Oceania" },
   { value: "Other", label: "Other" },
@@ -86,6 +84,7 @@ const SOURCE_LABELS: Record<string, string> = {
   remotive: "Remotive",
   arbeitnow: "Arbeitnow",
   jobicy: "Jobicy",
+  adzuna: "Adzuna",
 };
 
 const SOURCE_ORDER = [
@@ -95,6 +94,7 @@ const SOURCE_ORDER = [
   "remotive",
   "arbeitnow",
   "jobicy",
+  "adzuna",
 ];
 
 interface Filters {
@@ -323,12 +323,12 @@ export function JobBoard({
               <Stat
                 icon={<Building2 className="h-4 w-4 text-primary" />}
                 value={stats.total}
-                label="open roles"
+                label="remote roles in APAC"
               />
               <Stat
                 icon={<MapPin className="h-4 w-4 text-primary" />}
-                value={stats.apacLocated}
-                label="located in APAC"
+                value={stats.companies}
+                label="companies hiring"
               />
               <Stat
                 icon={<Globe2 className="h-4 w-4 text-primary" />}

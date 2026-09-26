@@ -5,6 +5,7 @@ export interface JobStats {
   total: number;
   apacLocated: number;
   worldwide: number;
+  companies: number;
   sources: { source: string; count: number }[];
   categories: { category: string; count: number }[];
   /** False when the database is unavailable and numbers are unavailable. */
@@ -15,6 +16,7 @@ const EMPTY_STATS: JobStats = {
   total: 0,
   apacLocated: 0,
   worldwide: 0,
+  companies: 0,
   sources: [],
   categories: [],
   available: false,
@@ -27,7 +29,7 @@ export async function getJobStats(): Promise<JobStats> {
   try {
     await connectDB();
 
-    const [total, byApac, sources, categories] = await Promise.all([
+    const [total, byApac, sources, categories, companies] = await Promise.all([
       JobModel.estimatedDocumentCount(),
       JobModel.aggregate<{ _id: string; n: number }>([
         { $group: { _id: "$apac", n: { $sum: 1 } } },
@@ -40,6 +42,7 @@ export async function getJobStats(): Promise<JobStats> {
         { $group: { _id: "$category", n: { $sum: 1 } } },
         { $sort: { n: -1 } },
       ]),
+      JobModel.distinct("company"),
     ]);
 
     const apacCount = (kind: string) =>
@@ -49,6 +52,7 @@ export async function getJobStats(): Promise<JobStats> {
       total,
       apacLocated: apacCount("apac"),
       worldwide: apacCount("worldwide"),
+      companies: companies.length,
       sources: sources.map((entry) => ({
         source: entry._id,
         count: entry.n,
