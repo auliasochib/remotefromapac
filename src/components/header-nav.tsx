@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Jobs" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/saved", label: "Saved" },
 ];
 
