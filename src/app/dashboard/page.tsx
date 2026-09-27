@@ -19,8 +19,8 @@ export default function DashboardPage() {
               AI Dashboard
             </h1>
             <p className="text-sm text-muted-foreground">
-              Upload your resume once — get match scores, a resume review and
-              cover letters tailored to each job.
+              Upload your resume once — get match scores and a recruiter-grade
+              resume review.
             </p>
           </div>
         </div>

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 const PREMIUM_PERKS = [
   "AI-ranked job matches (semantic scoring by DeepSeek)",
   "AI resume review — role-aware critique + ATS tips",
-  "AI cover letter for every job, written from your resume",
   "Priority access to new AI features",
 ];
 
@@ -135,7 +134,7 @@ export function UpgradeModal({
           setPhase("success");
           setMessage(
             plan === "search"
-              ? "1 kredit AI search siap dipakai."
+              ? "1 AI search credit is ready to use."
               : "Semua fitur AI sudah terbuka selama 30 hari."
           );
           onUpgraded?.();
@@ -144,9 +143,9 @@ export function UpgradeModal({
           setPhase("success");
           setMessage(
             (plan === "search"
-              ? "1 kredit AI search"
-              : "Premium 30 hari") +
-              " akan aktif otomatis begitu Midtrans mengonfirmasi pembayaran."
+              ? "1 AI search credit"
+              : "Premium 30 days") +
+              " will activate automatically once Midtrans confirms the payment."
           );
           onUpgraded?.();
         },
@@ -194,25 +193,25 @@ export function UpgradeModal({
             Unlock AI job matching
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Bayar per pencarian, atau ambil premium untuk akses penuh.
+            Pay per search, or grab premium for full access.
           </p>
 
           {phase === "success" ? (
             <div className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
               <p className="font-medium text-emerald-700 dark:text-emerald-400">
-                Terima kasih! 🎉
+                Thank you! 🎉
               </p>
               <p className="mt-1 text-muted-foreground">
                 {message || "Fitur AI sudah terbuka."}
               </p>
               <Button className="mt-3 w-full rounded-lg" onClick={onClose}>
-                <Sparkles className="mr-1.5 h-4 w-4" /> Mulai pakai AI
+                <Sparkles className="mr-1.5 h-4 w-4" /> Start using AI
               </Button>
             </div>
           ) : phase === "not-configured" ? (
             <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
               <p className="font-medium text-amber-700 dark:text-amber-400">
-                Payment belum aktif
+                Payments not configured yet
               </p>
               <p className="mt-1 text-muted-foreground">
                 {message ||
@@ -245,7 +244,7 @@ export function UpgradeModal({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">
-                      Bayar per pencarian
+                      Pay per search
                     </span>
                     <span className="font-heading text-sm font-bold">
                       {searchPrice}
@@ -254,7 +253,7 @@ export function UpgradeModal({
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     1x AI-ranked search · tanpa langganan
                     {typeof credits === "number" && credits > 0
-                      ? ` · kamu punya ${credits} kredit`
+                      ? ` · you have ${credits} credit${credits === 1 ? "" : "s"}`
                       : ""}
                   </p>
                 </button>
@@ -270,14 +269,14 @@ export function UpgradeModal({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">
-                      Premium 30 hari
+                      Premium 30 days
                     </span>
                     <span className="font-heading text-sm font-bold">
                       {premiumPrice}
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Unlimited AI search + review + cover letter
+                    Unlimited AI search + AI resume review
                   </p>
                 </button>
               </div>
@@ -303,11 +302,11 @@ export function UpgradeModal({
                 {phase === "creating" || phase === "paying" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {phase === "creating" ? "Menyiapkan pembayaran…" : "Menunggu pembayaran…"}
+                    {phase === "creating" ? "Preparing payment…" : "Waiting for payment…"}
                   </>
                 ) : (
                   <>
-                    Bayar {plan === "search" ? searchPrice : premiumPrice} — Midtrans
+                    Pay {plan === "search" ? searchPrice : premiumPrice} with Midtrans
                   </>
                 )}
               </Button>
@@ -315,9 +314,9 @@ export function UpgradeModal({
           )}
 
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            QRIS, GoPay, bank transfer &amp; kartu kredit via Midtrans ·{" "}
+            QRIS, GoPay, bank transfer &amp; cards via Midtrans ·{" "}
             <Link href="/" className="underline" onClick={onClose}>
-              lanjut tanpa premium
+              continue without premium
             </Link>
           </p>
         </div>

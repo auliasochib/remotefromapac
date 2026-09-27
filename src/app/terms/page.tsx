@@ -52,7 +52,7 @@ export default function TermsPage() {
             outcome.
           </p>
           <p>
-            AI-generated output (match scores, reviews, cover letters) is
+            AI-generated output (match scores, reviews) is
             automated and may contain errors or omissions. Treat it as
             assistance, not advice — you are responsible for verifying facts
             and for anything you submit to an employer.

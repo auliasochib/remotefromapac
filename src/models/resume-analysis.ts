@@ -5,7 +5,7 @@ import mongoose, { models, Schema } from "mongoose";
  *
  * One analysis per user (re-upload replaces it). The raw file is never stored
  * — only the extracted text, truncated, which is what matching, review and
- * cover-letter generation read.
+ * review read.
  */
 const ResumeAnalysisSchema = new Schema(
   {

@@ -11,7 +11,7 @@
  *
  * Everything in the app degrades gracefully when no key is present: the match
  * score and review run on structured heuristics, and the AI-only features
- * (cover letter) answer with a setup hint instead of an error page.
+ * answering with a setup hint instead of an error page.
  */
 
 export type AiProvider = "deepseek" | "openrouter" | "gemini" | "openai";

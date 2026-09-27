@@ -18,8 +18,7 @@ const AI_SHORTLIST = 25;
  * Match the signed-in user's stored resume against jobs in the database.
  *
  * Scoring is heuristic (skill overlap + seniority alignment) and needs no AI
- * provider. The AI layer builds on top of this data — review and cover letters
- * read the same analysis.
+ * provider. The AI review reads the same analysis.
  */
 export async function POST(request: NextRequest) {
   const session = await auth();

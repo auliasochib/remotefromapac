@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SiteHeader } from "@/components/site-header";
 import { SaveJobButton } from "@/components/save-job-button";
-import { CoverLetterGenerator } from "@/components/cover-letter-generator";
 import { getJobById } from "@/lib/jobs";
 import { initials, timeAgo } from "@/lib/format";
 import { sourceSite } from "@/lib/source-meta";
@@ -263,7 +262,6 @@ export default async function JobDetailPage({
                   <ExternalLink className="ml-2 h-4 w-4" />
                 </Button>
                 <SaveJobButton job={job} className="mt-2.5 w-full" />
-                <CoverLetterGenerator jobId={job.id} />
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   Opens the original posting in a new tab.
                 </p>

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   const itemName =
     plan === "search"
       ? "RemoteFromAPAC — 1x AI job search"
-      : "RemoteFromAPAC Premium (30 hari)";
+      : "RemoteFromAPAC Premium (30 days)";
 
   try {
     const snap = await createSnapTransaction({

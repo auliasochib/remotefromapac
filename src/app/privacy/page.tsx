@@ -72,8 +72,7 @@ export default function PrivacyPage() {
         <Section title="2. How your data is used">
           <p>
             Account data identifies you and stores your preferences. Resume
-            text and derived skills power job matching, the resume review and
-            cover letter generation. Saved jobs and alerts power your bookmarks
+            text and derived skills power job matching and the resume review. Saved jobs and alerts power your bookmarks
             and notifications. Payment records track your premium entitlement.
           </p>
           <p>We do not sell your personal data, and we do not run
@@ -95,9 +94,8 @@ export default function PrivacyPage() {
             <strong className="text-foreground">
               AI provider (currently DeepSeek)
             </strong>{" "}
-            — when you use premium AI features (resume review, cover letter),
-            the stored text of your resume and the relevant job description are
-            sent to the AI provider to generate the output. This is disclosed
+            — when you use the premium AI review, the stored text of your resume
+            and market data are sent to the AI provider to generate the output. This is disclosed
             in the product. Job matching scores and the rule-based review run
             on our own infrastructure and involve no third-party AI.
           </p>

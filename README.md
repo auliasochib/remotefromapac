@@ -193,7 +193,6 @@ The AI provider is **DeepSeek** by default (`DEEPSEEK_API_KEY`, model
 | **AI re-ranking** | The heuristic pass shortlists 25 jobs; DeepSeek then scores each semantically — equivalent experience phrased differently, transferable skills, hard requirements — and the dashboard marks results "AI-ranked" | **Yes** |
 | **Recommended jobs** | Top matches with strengths (resume skills the job wants) and missing skills | No |
 | **Resume review** | Rule-based structural/ATS checklist always runs; with an AI key it adds a role-aware critique benchmarked against live market titles | Optional |
-| **Cover letter** | Written from the stored resume + the job's description (on each job detail page) | **Yes** |
 
 Upload a PDF or text file (≤2 MB) on the Dashboard. Only extracted text is
 stored (capped, in `resumeAnalyses`) — never the file itself. Matching,
@@ -203,7 +202,7 @@ to its rule-based checklist.
 
 **To enable the AI upgrade**, set one provider key (see `.env.example`) and
 redeploy — no code changes. Without a key, matching and the rule-based review
-work fully, and the cover letter button explains what is missing.
+work fully.
 
 ### Phase 5 groundwork (notifications)
 
@@ -220,10 +219,10 @@ The plan split is implemented, with **pay-per-use** on top:
 |---|---|
 | **Free** | Browse, search, filters, save jobs, rule-based match score, rule-based resume review |
 | **Pay-per-search** (Rp 9.900 / 1x) | One AI-ranked search credit, no subscription |
-| **Premium** (Rp 99.000 / 30 hari) | Unlimited AI-ranked matches, AI resume review, AI cover letters |
+| **Premium** (Rp 99.000 / 30 days) | Unlimited AI-ranked matches, AI resume review |
 
 When a signed-in free user clicks **Find matching jobs**, **Review resume**, or
-**Generate cover letter**, the results that need no AI still render and the
+**Review resume**, the results that need no AI still render and the
 **Midtrans Snap payment prompt opens automatically** (QRIS, GoPay, bank
 transfer, cards) with both options — pay for one search or go premium.
 
