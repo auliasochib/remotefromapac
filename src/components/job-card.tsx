@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { ArrowUpRight, Building2, Clock, MapPin } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  ExternalLink,
+  MapPin,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SaveJobButton } from "@/components/save-job-button";
-import { initials, timeAgo } from "@/lib/format";
+import { initials, plainExcerpt, timeAgo } from "@/lib/format";
 import type { Job, JobType } from "@/lib/types";
 
 const TYPE_LABELS: Record<JobType, string> = {
@@ -50,17 +56,18 @@ export function JobCard({
       className="animate-rise group relative flex flex-col rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-violet-500/5"
       style={{ "--delay": `${Math.min(index, 11) * 40}ms` } as React.CSSProperties}
     >
-      <div className="flex items-start gap-3">
+      {/* Header: logo, title, company, save */}
+      <div className="flex items-start gap-4">
         {job.companyLogo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={job.companyLogo}
             alt=""
-            className="h-11 w-11 shrink-0 rounded-xl border border-border/70 bg-background object-contain p-1.5"
+            className="h-12 w-12 shrink-0 rounded-xl border border-border/70 bg-background object-contain p-1.5"
           />
         ) : (
           <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tileStyle(
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tileStyle(
               job.company
             )} text-sm font-bold text-white shadow-sm`}
           >
@@ -69,18 +76,24 @@ export function JobCard({
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="font-heading text-[0.95rem] font-semibold leading-snug">
+          <h3 className="font-heading text-base font-semibold leading-snug">
             <Link
               href={detailHref}
-              className="line-clamp-2 transition-colors group-hover:text-primary"
+              className="line-clamp-2 transition-colors hover:text-primary"
               title={job.title}
             >
               {job.title}
             </Link>
           </h3>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Building2 className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{job.company}</span>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{job.company}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{job.location}</span>
+            </span>
           </p>
         </div>
 
@@ -89,7 +102,8 @@ export function JobCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      {/* Tags */}
+      <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <Badge className="rounded-md border-transparent bg-primary/10 font-medium text-primary hover:bg-primary/15 dark:bg-primary/15">
           {TYPE_LABELS[job.jobType]}
         </Badge>
@@ -99,39 +113,48 @@ export function JobCard({
         <Badge variant="outline" className="rounded-md font-normal capitalize">
           {job.level}
         </Badge>
+        {job.salary ? (
+          <Badge
+            variant="outline"
+            className="ml-auto rounded-md border-transparent bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
+          >
+            {job.salary}
+          </Badge>
+        ) : null}
       </div>
 
-      {job.tags.length > 0 ? (
-        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground" title={job.tags.join(" · ")}>
-          {job.tags.slice(0, 5).join(" · ")}
-        </p>
-      ) : null}
+      {/* Short summary */}
+      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+        {plainExcerpt(job.descriptionHtml)}
+      </p>
 
-      {job.salary ? (
-        <p className="mt-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-          {job.salary}
-        </p>
-      ) : null}
-
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3.5 text-xs text-muted-foreground">
-        <span
-          className="flex min-w-0 items-center gap-1.5"
-          title={`${job.location} · via ${job.source}`}
-        >
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{job.location}</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5" title={`via ${job.source}`}>
+      {/* Footer: posted date + actions */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-border/60 pt-3.5">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           {timeAgo(job.publishedAt)}
         </span>
-        <Link
-          href={detailHref}
-          className="flex shrink-0 items-center gap-0.5 font-medium text-primary hover:underline"
-        >
-          View
-          <ArrowUpRight className="h-3.5 w-3.5" />
-        </Link>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-lg"
+            render={<Link href={detailHref} />}
+          >
+            View Details
+          </Button>
+          <Button
+            size="sm"
+            className="rounded-lg shadow-sm shadow-violet-500/20"
+            render={
+              <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            Apply Now
+            <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </article>
   );

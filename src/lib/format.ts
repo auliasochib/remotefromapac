@@ -26,3 +26,13 @@ export function initials(name: string): string {
     .map((word) => word[0]!.toUpperCase())
     .join("");
 }
+
+/** Plain-text excerpt from an HTML description, cut at a word boundary. */
+export function plainExcerpt(html: string, maxChars = 170): string {
+  const plain = (html ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (plain.length <= maxChars) return plain;
+  return `${plain.slice(0, maxChars).replace(/\s+\S*$/, "")}…`;
+}

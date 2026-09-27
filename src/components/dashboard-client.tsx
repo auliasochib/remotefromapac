@@ -450,7 +450,7 @@ export function DashboardClient() {
                   {matches.mode === "ai" ? "AI-ranked" : "Rule-based"}
                 </Badge>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="flex flex-col gap-5">
                 {matches.data.map((match, index) => (
                   <div key={match.job.id} className="space-y-2">
                     <div className="flex items-center gap-2">

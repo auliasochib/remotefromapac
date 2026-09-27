@@ -138,6 +138,7 @@ export function JobBoard({
   const [error, setError] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   /** The server already fetched the default view — don't fetch it again. */
   const skipFirstFetch = useRef(Boolean(initialData));
 
@@ -196,6 +197,25 @@ export function JobBoard({
 
     return () => controller.abort();
   }, [debouncedSearch, filters, sort, page]);
+
+  // Infinite scroll: when the sentinel below the list becomes visible, load
+  // the next page automatically.
+  const hasMore = data?.hasMore ?? false;
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasMore || loading || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore]);
 
   const updateFilter = useCallback((key: keyof Filters, value: string) => {
     setPage(1);
@@ -481,7 +501,8 @@ export function JobBoard({
                 </div>
               ) : data ? (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {/* Single-column vertical list, top to bottom */}
+                  <div className="flex flex-col gap-4">
                     {data.jobs.map((job, index) => (
                       <JobCard
                         key={job.id}
@@ -494,22 +515,19 @@ export function JobBoard({
 
                   {data.hasMore ? (
                     <div className="flex flex-col items-center gap-3 pt-8">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="rounded-xl px-6"
-                        onClick={() => setPage((p) => p + 1)}
-                        disabled={loadingMore}
-                      >
-                        {loadingMore ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading…
-                          </>
-                        ) : (
-                          "Load more roles"
-                        )}
-                      </Button>
+                      <div ref={loadMoreRef} aria-hidden className="h-1 w-full" />
+                      {loadingMore ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="rounded-xl px-6"
+                          onClick={() => setPage((p) => p + 1)}
+                        >
+                          Load more roles
+                        </Button>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Showing {data.jobs.length} of {data.total}
                       </p>
@@ -626,16 +644,16 @@ function sourceOptions(stats: JobStats): { value: string; label: string }[] {
 
 function SkeletonGrid() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="flex flex-col gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
           className="rounded-2xl border border-border/70 bg-card p-5"
         >
-          <div className="flex items-start gap-3">
-            <div className="skeleton-shimmer h-11 w-11 shrink-0 rounded-xl bg-muted" />
+          <div className="flex items-start gap-4">
+            <div className="skeleton-shimmer h-12 w-12 shrink-0 rounded-xl bg-muted" />
             <div className="flex-1 space-y-2">
-              <div className="skeleton-shimmer h-4 w-4/5 rounded bg-muted" />
+              <div className="skeleton-shimmer h-4 w-3/5 rounded bg-muted" />
               <div className="skeleton-shimmer h-3.5 w-2/5 rounded bg-muted" />
             </div>
           </div>
@@ -643,8 +661,9 @@ function SkeletonGrid() {
             <div className="skeleton-shimmer h-5 w-20 rounded-md bg-muted" />
             <div className="skeleton-shimmer h-5 w-16 rounded-md bg-muted" />
           </div>
+          <div className="skeleton-shimmer mt-3 h-3.5 w-full rounded bg-muted" />
           <div className="mt-5 h-px bg-border" />
-          <div className="skeleton-shimmer mt-3.5 h-3 w-24 rounded bg-muted" />
+          <div className="skeleton-shimmer mt-3.5 h-3 w-40 rounded bg-muted" />
         </div>
       ))}
     </div>
