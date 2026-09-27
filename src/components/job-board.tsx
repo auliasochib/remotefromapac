@@ -6,8 +6,11 @@ import {
   Globe2,
   Loader2,
   MapPin,
+  RefreshCw,
+  Rows3,
   Search,
   SlidersHorizontal,
+  Table2,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JobCard } from "@/components/job-card";
+import Link from "next/link";
+import { timeAgo } from "@/lib/format";
 import { CAREERS_SOURCE } from "@/lib/types";
 import type { JobListResponse, JobSort } from "@/lib/types";
 import type { JobStats } from "@/lib/stats";
@@ -137,6 +142,7 @@ export function JobBoard({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [view, setView] = useState<"list" | "table">("list");
   const abortRef = useRef<AbortController | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   /** The server already fetched the default view — don't fetch it again. */
@@ -355,6 +361,11 @@ export function JobBoard({
                 value={stats.sources.filter((s) => s.count > 0).length}
                 label="sources"
               />
+              <Stat
+                icon={<RefreshCw className="h-4 w-4 text-primary" />}
+                value={stats.lastSyncedAt ? timeAgo(stats.lastSyncedAt) : "—"}
+                label="updated"
+              />
             </div>
           ) : null}
         </div>
@@ -391,6 +402,31 @@ export function JobBoard({
               </p>
 
               <div className="ml-auto flex items-center gap-2">
+                {/* View switcher — table is a desktop affordance */}
+                <div className="hidden items-center gap-1 rounded-full border border-border/70 bg-card p-1 md:flex">
+                  <button
+                    type="button"
+                    onClick={() => setView("list")}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      view === "list"
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Rows3 className="h-3.5 w-3.5" /> List
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("table")}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      view === "table"
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Table2 className="h-3.5 w-3.5" /> Table
+                  </button>
+                </div>
                 {/* Mobile filter toggle */}
                 <Button
                   variant="outline"
@@ -501,8 +537,130 @@ export function JobBoard({
                 </div>
               ) : data ? (
                 <>
-                  {/* Single-column vertical list, top to bottom */}
-                  <div className="flex flex-col gap-4">
+                  {view === "table" ? (
+                    <div className="hidden overflow-x-auto rounded-2xl border border-border/70 bg-card md:block">
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-border/60 bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">
+                              <button
+                                type="button"
+                                className={`hover:text-foreground ${sort === "company" ? "text-foreground" : ""}`}
+                                onClick={() => setSort("company")}
+                              >
+                                Company
+                              </button>
+                            </th>
+                            <th className="px-4 py-3 font-medium">Role</th>
+                            <th className="px-4 py-3 font-medium">
+                              <button
+                                type="button"
+                                className={`hover:text-foreground ${sort !== "company" ? "text-foreground" : ""}`}
+                                onClick={() =>
+                                  setSort(sort === "newest" ? "oldest" : "newest")
+                                }
+                              >
+                                Posted {sort === "newest" ? "↓" : sort === "oldest" ? "↑" : ""}
+                              </button>
+                            </th>
+                            <th className="px-4 py-3 font-medium">Location</th>
+                            <th className="px-4 py-3 font-medium">Salary</th>
+                            <th className="px-4 py-3" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.jobs.map((job) => (
+                            <tr
+                              key={job.id}
+                              className="border-b border-border/40 transition-colors last:border-0 hover:bg-muted/30"
+                            >
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2.5">
+                                  {job.companyLogo ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={job.companyLogo}
+                                      alt=""
+                                      className="h-8 w-8 shrink-0 rounded-lg border border-border/70 bg-background object-contain p-1"
+                                    />
+                                  ) : (
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold">
+                                      {job.company.slice(0, 1)}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="max-w-44 truncate font-medium">
+                                      {job.company}
+                                    </p>
+                                    <p className="truncate font-mono text-xs text-muted-foreground">
+                                      {job.source}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="max-w-72 px-4 py-3">
+                                <Link
+                                  href={`/jobs/${job.id}`}
+                                  className="line-clamp-2 font-medium hover:text-primary"
+                                >
+                                  {job.title}
+                                </Link>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {job.jobType === "full-time" ? "Full-time" : job.jobType} · {job.category}
+                                </p>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
+                                {timeAgo(job.publishedAt)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-amber-500/10 px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-400">
+                                  <MapPin className="h-3 w-3" />
+                                  {job.location}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-pink-600 dark:text-pink-400">
+                                {job.salary ?? "N/A"}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-full"
+                                    render={<Link href={`/jobs/${job.id}`} />}
+                                  >
+                                    Details
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="rounded-full px-4 shadow-sm shadow-violet-500/20"
+                                    render={
+                                      <a
+                                        href={job.applyUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      />
+                                    }
+                                  >
+                                    APPLY
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+
+                  {/* Vertical list — on mobile alongside the table view, or as the primary view */}
+                  <div
+                    className={
+                      view === "table"
+                        ? "flex flex-col gap-4 md:hidden"
+                        : "flex flex-col gap-4"
+                    }
+                  >
                     {data.jobs.map((job, index) => (
                       <JobCard
                         key={job.id}
@@ -556,14 +714,14 @@ function Stat({
   label,
 }: {
   icon: React.ReactNode;
-  value: number;
+  value: number | string;
   label: string;
 }) {
   return (
     <span className="flex items-center gap-2">
       {icon}
       <span className="font-heading text-base font-semibold text-foreground tabular-nums">
-        {value.toLocaleString()}
+        {typeof value === "number" ? value.toLocaleString() : value}
       </span>
       <span>{label}</span>
     </span>

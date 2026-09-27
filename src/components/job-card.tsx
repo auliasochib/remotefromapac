@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   Building2,
   Clock,
-  ExternalLink,
   MapPin,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -90,10 +89,12 @@ export function JobCard({
               <Building2 className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{job.company}</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{job.location}</span>
-            </span>
+            <span
+                className="flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+              >
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{job.location}</span>
+              </span>
           </p>
         </div>
 
@@ -116,7 +117,7 @@ export function JobCard({
         {job.salary ? (
           <Badge
             variant="outline"
-            className="ml-auto rounded-md border-transparent bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
+            className="ml-auto rounded-md border-transparent bg-pink-500/10 font-mono font-medium text-pink-600 dark:text-pink-400"
           >
             {job.salary}
           </Badge>
@@ -130,29 +131,28 @@ export function JobCard({
 
       {/* Footer: posted date + actions */}
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-border/60 pt-3.5">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           {timeAgo(job.publishedAt)}
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="rounded-lg"
+            className="rounded-full"
             render={<Link href={detailHref} />}
           >
             View Details
           </Button>
           <Button
             size="sm"
-            className="rounded-lg shadow-sm shadow-violet-500/20"
+            className="rounded-full px-4 shadow-sm shadow-violet-500/20"
             render={
               <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" />
             }
           >
-            Apply Now
-            <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+            APPLY
           </Button>
         </div>
       </div>
