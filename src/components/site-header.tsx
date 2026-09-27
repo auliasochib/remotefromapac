@@ -22,7 +22,7 @@ export async function SiteHeader() {
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-transform group-hover:scale-105">
             <Globe2 className="h-5 w-5 text-white" />
           </span>
-          <span>
+          <span className="hidden min-[400px]:inline">
             Remote{" "}
             <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent dark:from-violet-400 dark:to-fuchsia-400">
               from APAC

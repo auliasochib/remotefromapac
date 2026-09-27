@@ -398,12 +398,12 @@ export function DashboardClient() {
               Find matching jobs
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <Input
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
                 placeholder="Target role (optional) — e.g. Senior Frontend"
-                className="w-64 rounded-lg"
+                className="w-full rounded-lg sm:w-64"
               />
               <Button
                 variant="outline"

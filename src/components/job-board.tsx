@@ -401,7 +401,7 @@ export function JobBoard({
                 ) : null}
               </p>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                 {/* View switcher — table is a desktop affordance */}
                 <div className="hidden items-center gap-1 rounded-full border border-border/70 bg-card p-1 md:flex">
                   <button
