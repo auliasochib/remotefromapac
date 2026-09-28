@@ -1,5 +1,6 @@
 import { connectDB } from "./db";
 import { JobModel } from "@/models/job";
+import { isRemotePosting } from "./remote";
 import {
   fetchArbeitnow,
   fetchJobicy,
@@ -22,21 +23,46 @@ const PRUNE_AFTER_DAYS = 14;
  * mirrors what the source currently offers, and postings that stop being
  * APAC-relevant disappear instead of lingering. A loader that fails leaves its
  * jobs untouched.
+ *
+ * `remoteGuaranteed` marks boards that only ever list remote roles; every
+ * other source must prove remote-ness per posting.
  */
 const SOURCE_LOADERS: {
   name: string;
   owns: JobSource[];
+  remoteGuaranteed?: boolean;
   load: () => Promise<Job[]>;
 }[] = [
-  { name: "remotive", owns: ["remotive"], load: () => fetchRemotive() },
-  { name: "arbeitnow", owns: ["arbeitnow"], load: () => fetchArbeitnow() },
-  { name: "jobicy", owns: ["jobicy"], load: () => fetchJobicy() },
+  {
+    name: "remotive",
+    owns: ["remotive"],
+    remoteGuaranteed: true,
+    load: () => fetchRemotive(),
+  },
+  {
+    name: "arbeitnow",
+    owns: ["arbeitnow"],
+    remoteGuaranteed: true,
+    load: () => fetchArbeitnow(),
+  },
+  {
+    name: "jobicy",
+    owns: ["jobicy"],
+    remoteGuaranteed: true,
+    load: () => fetchJobicy(),
+  },
   {
     name: "weworkremotely",
     owns: ["weworkremotely"],
+    remoteGuaranteed: true,
     load: () => fetchWeWorkRemotely(),
   },
-  { name: "remoteok", owns: ["remoteok"], load: () => fetchRemoteOk() },
+  {
+    name: "remoteok",
+    owns: ["remoteok"],
+    remoteGuaranteed: true,
+    load: () => fetchRemoteOk(),
+  },
   {
     name: "company-boards",
     owns: ["greenhouse", "lever", "ashby"],
@@ -49,6 +75,7 @@ export interface SyncResult {
   fetched: number;
   kept: number;
   skippedNonApac: number;
+  skippedNotRemote: number;
   duplicates: number;
   upserted: number;
   pruned: number;
@@ -101,6 +128,7 @@ export async function syncJobs(): Promise<SyncResult> {
 
   const fetched = all.length;
   let skippedNonApac = 0;
+  let skippedNotRemote = 0;
   let duplicates = 0;
   const seen = new Set<string>();
   const keep: Job[] = [];
@@ -111,6 +139,17 @@ export async function syncJobs(): Promise<SyncResult> {
     // dropped here along with "restricted".
     if (job.apac !== "apac") {
       skippedNonApac++;
+      continue;
+    }
+    // Sources that mix on-site/hybrid roles must prove remote-ness per
+    // posting; dedicated remote boards are trusted.
+    const loader = SOURCE_LOADERS.find((l) => l.owns.includes(job.source));
+    if (
+      loader &&
+      !loader.remoteGuaranteed &&
+      !isRemotePosting(job.title, job.tags ?? [], job.descriptionHtml)
+    ) {
+      skippedNotRemote++;
       continue;
     }
     const key = dedupeKey(job);
@@ -200,6 +239,7 @@ export async function syncJobs(): Promise<SyncResult> {
     fetched,
     kept: keep.length,
     skippedNonApac,
+    skippedNotRemote,
     duplicates,
     upserted,
     pruned: prunedResult.deletedCount ?? 0,

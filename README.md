@@ -171,6 +171,7 @@ scripts/sync-jobs.ts          # `npm run sync`
 | Classification | Meaning | Ingested? |
 |---|---|---|
 | `apac` | Located in, or explicitly open to, an APAC country (countries, major cities and region names are matched with word boundaries) | **Yes — the only bucket stored** |
+| — | **Remote requirement**: ATS-sourced postings (Greenhouse/Lever/Ashby, Adzuna) must mention remote work in title/tags/description; dedicated remote boards are trusted by policy | enforced at ingest |
 | `worldwide` | Open anywhere ("Anywhere in the World") | No — excluded by policy |
 | `restricted` | Limited to a region that excludes APAC (US-only, EMEA, Europe, …) | No |
 

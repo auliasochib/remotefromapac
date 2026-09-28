@@ -21,6 +21,7 @@ async function main() {
   console.log("\nSummary:");
   console.log(`  fetched            ${result.fetched}`);
   console.log(`  skipped (non-APAC) ${result.skippedNonApac}`);
+  console.log(`  skipped (non-remote) ${result.skippedNotRemote}`);
   console.log(`  duplicates         ${result.duplicates}`);
   console.log(`  stored (upsert)    ${result.upserted}`);
   console.log(`  removed (gone)     ${result.stale}`);
