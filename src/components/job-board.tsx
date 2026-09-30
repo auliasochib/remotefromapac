@@ -67,10 +67,10 @@ const CATEGORY_OPTIONS = [
   { value: "Other", label: "Other" },
 ];
 
-// Every stored role is located in the Asia-Pacific region, so the location
-// filter narrows within APAC rather than across continents.
+// Locations: APAC countries plus worldwide-remote postings.
 const REGION_OPTIONS = [
-  { value: "all", label: "Anywhere in APAC" },
+  { value: "all", label: "All locations" },
+  { value: "Worldwide", label: "Worldwide" },
   { value: "Asia", label: "Asia" },
   { value: "Oceania", label: "Oceania" },
   { value: "Other", label: "Other" },
@@ -349,7 +349,7 @@ export function JobBoard({
               <Stat
                 icon={<Building2 className="h-4 w-4 text-primary" />}
                 value={stats.total}
-                label="remote roles in APAC"
+                label="remote roles"
               />
               <Stat
                 icon={<MapPin className="h-4 w-4 text-primary" />}

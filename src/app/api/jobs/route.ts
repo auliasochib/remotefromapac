@@ -32,9 +32,10 @@ export async function GET(request: NextRequest) {
       region: sp.get("region") ?? undefined,
       source: sp.get("source") ?? undefined,
       sort,
-      // The database only stores roles located in the Asia-Pacific region;
-      // mirror that on the live provider fallback so both paths agree.
-      apacLocated: true,
+      // The database stores roles workable from the APAC region (located
+      // there or worldwide-remote); mirror that on the live provider
+      // fallback so both paths agree.
+      apacReachable: true,
       page: Number(sp.get("page") ?? "1") || 1,
       pageSize: Number(sp.get("pageSize") ?? "20") || 20,
     });

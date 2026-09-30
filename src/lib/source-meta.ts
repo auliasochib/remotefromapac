@@ -24,6 +24,7 @@ export const SOURCE_SITES: Record<JobSource, string> = {
   weworkremotely: "https://weworkremotely.com",
   remoteok: "https://remoteok.com",
   adzuna: "https://www.adzuna.com",
+  himalayas: "https://himalayas.app",
   greenhouse: "https://boards.greenhouse.io",
   lever: "https://jobs.lever.co",
   ashby: "https://jobs.ashbyhq.com",

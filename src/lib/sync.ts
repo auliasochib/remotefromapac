@@ -8,6 +8,7 @@ import {
 } from "./providers";
 import {
   fetchCompanyBoards,
+  fetchHimalayas,
   fetchRemoteOk,
   fetchWeWorkRemotely,
   fetchAdzuna,
@@ -62,6 +63,12 @@ const SOURCE_LOADERS: {
     owns: ["remoteok"],
     remoteGuaranteed: true,
     load: () => fetchRemoteOk(),
+  },
+  {
+    name: "himalayas",
+    owns: ["himalayas"],
+    remoteGuaranteed: true,
+    load: () => fetchHimalayas(),
   },
   {
     name: "company-boards",
@@ -134,10 +141,9 @@ export async function syncJobs(): Promise<SyncResult> {
   const keep: Job[] = [];
 
   for (const job of all) {
-    // This board is strictly APAC-located: worldwide-remote postings are not
-    // stored, per product decision. The classifier's "worldwide" bucket is
-    // dropped here along with "restricted".
-    if (job.apac !== "apac") {
+    // Every job must be workable from the APAC region: located in APAC, or
+    // open worldwide-remote. Postings restricted to other regions are dropped.
+    if (job.apac === "restricted") {
       skippedNonApac++;
       continue;
     }

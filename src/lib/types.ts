@@ -25,6 +25,7 @@ export type JobSource =
   | "weworkremotely"
   | "remoteok"
   | "adzuna"
+  | "himalayas"
   | "greenhouse"
   | "lever"
   | "ashby";

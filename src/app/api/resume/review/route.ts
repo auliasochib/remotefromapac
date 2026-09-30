@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
     ? { title: new RegExp(escapeRegex(targetRole), "i") }
     : {};
   const benchmarkJobs = await JobModel.find({
-    apac: { $in: ["apac"] },
+    apac: { $in: ["apac", "worldwide"] },
     ...marketFilter,
   })
     .sort({ publishedAt: -1 })
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
   const market = (
     benchmarkJobs.length
       ? benchmarkJobs
-      : await JobModel.find({ apac: { $in: ["apac"] } })
+      : await JobModel.find({ apac: { $in: ["apac", "worldwide"] } })
           .sort({ publishedAt: -1 })
           .limit(40)
           .select("title tags -_id")

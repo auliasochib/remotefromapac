@@ -285,6 +285,114 @@ export async function fetchRemoteOk(): Promise<Job[]> {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Himalayas — official remote-jobs API, all fields                            */
+/* -------------------------------------------------------------------------- */
+
+interface HimalayasJob {
+  guid: string;
+  title?: string;
+  excerpt?: string;
+  companyName?: string;
+  companyLogo?: string;
+  employmentType?: string;
+  minSalary?: number | null;
+  maxSalary?: number | null;
+  salaryPeriod?: string | null;
+  currency?: string | null;
+  seniority?: string | null;
+  locationRestrictions?: string[];
+  timezoneRestrictions?: string[];
+  categories?: string[];
+  parentCategories?: string[];
+  description?: string;
+  pubDate?: number;
+  applicationLink?: string;
+}
+
+function himalayasSalary(job: HimalayasJob): string | null {
+  const { minSalary: min, maxSalary: max } = job;
+  if (!min && !max) return null;
+  const currency = (job.currency ?? "").toUpperCase() || "";
+  const period = job.salaryPeriod === "yearly" ? "/ yr" : job.salaryPeriod === "monthly" ? "/ mo" : "";
+  const fmt = (n: number) =>
+    n >= 1000 ? `${currency}${Math.round(n / 1000)}k` : `${currency}${n}`;
+  if (min && max) return `${fmt(min)} - ${fmt(max)}${period}`;
+  return `${fmt((max ?? min) as number)}${period}`;
+}
+
+/**
+ * Himalayas is a remote-only board covering every field (engineering, design,
+ * marketing, sales, support, product, operations, finance). Cursor-paginated;
+ * a few pages keep the sync fast and the dataset fresh.
+ */
+export async function fetchHimalayas(): Promise<Job[]> {
+  const jobs: Job[] = [];
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+
+  for (let page = 0; page < 5; page++) {
+    const url = cursor
+      ? `https://himalayas.app/jobs/api?cursor=${encodeURIComponent(cursor)}`
+      : "https://himalayas.app/jobs/api";
+
+    const res = await fetch(url, { headers: REQUEST_HEADERS, cache: "no-store" });
+    if (!res.ok) throw new Error(`Himalayas API error: ${res.status}`);
+
+    const data = (await res.json()) as {
+      jobs?: HimalayasJob[];
+      nextCursor?: string | null;
+    };
+
+    for (const raw of data.jobs ?? []) {
+      const guid = raw.guid ?? raw.applicationLink;
+      if (!guid || seen.has(guid)) continue;
+      seen.add(guid);
+
+      const title = (raw.title ?? "").trim();
+      if (!title) continue;
+      // Empty location restrictions on a remote-only board means worldwide.
+      const location =
+        (raw.locationRestrictions ?? []).filter(Boolean).join(", ") || "Worldwide";
+
+      jobs.push({
+        id: `himalayas-${guid}`,
+        source: "himalayas",
+        title,
+        company: raw.companyName ?? "Unknown company",
+        companyLogo: raw.companyLogo || null,
+        applyUrl:
+          raw.applicationLink ||
+          `https://himalayas.app/jobs/${encodeURIComponent(guid)}`,
+        location,
+        region: regionForLocation(location),
+        apac: apacEligibility(location),
+        jobType: normalizeJobType(raw.employmentType ?? "", title),
+        category: normalizeCategory(
+          raw.parentCategories?.[0] ?? raw.categories?.[0],
+          [],
+          title
+        ),
+        tags: normalizeTags(
+          raw.parentCategories,
+          (raw.categories ?? []).slice(0, 6),
+          raw.timezoneRestrictions
+        ),
+        level: levelForTitle(title),
+        salary: himalayasSalary(raw),
+        descriptionHtml: capHtml(raw.description ?? raw.excerpt ?? ""),
+        publishedAt: toIso(raw.pubDate ? raw.pubDate * 1000 : undefined),
+      });
+    }
+
+    cursor = data.nextCursor ?? null;
+    if (!cursor) break;
+  }
+
+  if (jobs.length === 0) throw new Error("Himalayas returned no jobs");
+  return jobs;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Adzuna — official jobs API, strong APAC country coverage                    */
 /* -------------------------------------------------------------------------- */
 
