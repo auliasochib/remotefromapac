@@ -29,10 +29,8 @@ interface JobPageProps {
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: JobPageProps): Promise<Metadata> {
   const { id } = await params;
-  const { q } = await searchParams;
   const job = await getJobById(id);
   if (!job) return { title: "Job not found" };
   return { title: `${job.title} at ${job.company}` };
@@ -40,10 +38,8 @@ export async function generateMetadata({
 
 export default async function JobDetailPage({
   params,
-  searchParams,
 }: JobPageProps) {
   const { id } = await params;
-  const { q } = await searchParams;
   const job = await getJobById(id);
   if (!job) notFound();
 

@@ -54,7 +54,10 @@ const NON_APAC_TERMS = [
   "europe", "european", "north america", "south america", "central america",
   "latam only", "latam", "americas only", "north america only",
   "africa only", "middle east only",
-  // Country names that are clearly outside APAC
+  // Country names that are clearly outside APAC. Bare "us" is safe here:
+  // the classifier only ever reads short location strings, where a standalone
+  // "us" token means the United States.
+  "us",
   "united states", "usa", "u.s.", "canada", "mexico", "brazil", "argentina",
   "colombia", "chile", "peru", "uruguay", "costa rica", "panama",
   "united kingdom", "england", "scotland", "wales", "ireland", "germany",
