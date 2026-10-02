@@ -84,23 +84,9 @@ const SORT_OPTIONS = [
 
 const SOURCE_LABELS: Record<string, string> = {
   [CAREERS_SOURCE]: "Company careers",
-  weworkremotely: "We Work Remotely",
-  remoteok: "RemoteOK",
-  remotive: "Remotive",
-  arbeitnow: "Arbeitnow",
-  jobicy: "Jobicy",
-  adzuna: "Adzuna",
 };
 
-const SOURCE_ORDER = [
-  CAREERS_SOURCE,
-  "weworkremotely",
-  "remoteok",
-  "remotive",
-  "arbeitnow",
-  "jobicy",
-  "adzuna",
-];
+const SOURCE_ORDER = [CAREERS_SOURCE];
 
 interface Filters {
   type: string;

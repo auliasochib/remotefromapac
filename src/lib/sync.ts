@@ -1,18 +1,7 @@
 import { connectDB } from "./db";
 import { JobModel } from "@/models/job";
 import { isRemotePosting } from "./remote";
-import {
-  fetchArbeitnow,
-  fetchJobicy,
-  fetchRemotive,
-} from "./providers";
-import {
-  fetchCompanyBoards,
-  fetchHimalayas,
-  fetchRemoteOk,
-  fetchWeWorkRemotely,
-  fetchAdzuna,
-} from "./sources";
+import { fetchCompanyBoards } from "./sources";
 import type { Job, JobSource } from "./types";
 
 /** Safety net: drop anything not seen for this long, whatever its source. */
@@ -28,6 +17,9 @@ const PRUNE_AFTER_DAYS = 14;
  * `remoteGuaranteed` marks boards that only ever list remote roles; every
  * other source must prove remote-ness per posting.
  */
+/** Employers publish their openings via these ATS job-board APIs. */
+const ACTIVE_SOURCES: JobSource[] = ["greenhouse", "lever", "ashby"];
+
 const SOURCE_LOADERS: {
   name: string;
   owns: JobSource[];
@@ -35,47 +27,11 @@ const SOURCE_LOADERS: {
   load: () => Promise<Job[]>;
 }[] = [
   {
-    name: "remotive",
-    owns: ["remotive"],
-    remoteGuaranteed: true,
-    load: () => fetchRemotive(),
-  },
-  {
-    name: "arbeitnow",
-    owns: ["arbeitnow"],
-    remoteGuaranteed: true,
-    load: () => fetchArbeitnow(),
-  },
-  {
-    name: "jobicy",
-    owns: ["jobicy"],
-    remoteGuaranteed: true,
-    load: () => fetchJobicy(),
-  },
-  {
-    name: "weworkremotely",
-    owns: ["weworkremotely"],
-    remoteGuaranteed: true,
-    load: () => fetchWeWorkRemotely(),
-  },
-  {
-    name: "remoteok",
-    owns: ["remoteok"],
-    remoteGuaranteed: true,
-    load: () => fetchRemoteOk(),
-  },
-  {
-    name: "himalayas",
-    owns: ["himalayas"],
-    remoteGuaranteed: true,
-    load: () => fetchHimalayas(),
-  },
-  {
     name: "company-boards",
-    owns: ["greenhouse", "lever", "ashby"],
+    owns: ACTIVE_SOURCES,
+    // ATS boards mix on-site/hybrid roles — each posting must prove it.
     load: () => fetchCompanyBoards(),
   },
-  { name: "adzuna", owns: ["adzuna"], load: () => fetchAdzuna() },
 ];
 
 export interface SyncResult {
@@ -107,6 +63,7 @@ export async function syncJobs(): Promise<SyncResult> {
       jobs: await source.load(),
     }))
   );
+  void 0;
 
   const bySource: SyncResult["bySource"] = [];
   const all: Job[] = [];
@@ -151,8 +108,7 @@ export async function syncJobs(): Promise<SyncResult> {
     // posting; dedicated remote boards are trusted.
     const loader = SOURCE_LOADERS.find((l) => l.owns.includes(job.source));
     if (
-      loader &&
-      !loader.remoteGuaranteed &&
+      !loader?.remoteGuaranteed &&
       !isRemotePosting(job.title, job.tags ?? [], job.descriptionHtml)
     ) {
       skippedNotRemote++;
@@ -241,6 +197,12 @@ export async function syncJobs(): Promise<SyncResult> {
     syncedAt: { $lt: cutoff },
   });
 
+  // Policy cleanup: postings from sources that are no longer ingested
+  // (third-party job boards) do not belong in this database.
+  const policyResult = await JobModel.deleteMany({
+    source: { $nin: ACTIVE_SOURCES },
+  });
+
   return {
     fetched,
     kept: keep.length,
@@ -248,7 +210,7 @@ export async function syncJobs(): Promise<SyncResult> {
     skippedNotRemote,
     duplicates,
     upserted,
-    pruned: prunedResult.deletedCount ?? 0,
+    pruned: (prunedResult.deletedCount ?? 0) + (policyResult.deletedCount ?? 0),
     stale,
     bySource,
     durationMs: Date.now() - startedAt,

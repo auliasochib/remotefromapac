@@ -1,6 +1,6 @@
 import { connectDB, isDbConfigured } from "./db";
 import { JobModel } from "@/models/job";
-import { fetchArbeitnow, fetchJobicy, fetchRemotive } from "./providers";
+import { fetchCompanyBoards } from "./sources";
 import { isApacReachable } from "./apac";
 import {
   CAREERS_SOURCE,
@@ -15,20 +15,17 @@ import {
 /* Live aggregation (fallback when the database is empty or unavailable)       */
 /* -------------------------------------------------------------------------- */
 
-async function fetchAllSources(search?: string): Promise<Job[]> {
-  const [remotive, arbeitnow, jobicy] = await Promise.allSettled([
-    fetchRemotive(search),
-    fetchArbeitnow(),
-    fetchJobicy(),
-  ]);
+async function fetchAllSources(): Promise<Job[]> {
+  // First-party only: the employers' own ATS job-board APIs.
+  const results = await Promise.allSettled([fetchCompanyBoards()]);
 
   const jobs: Job[] = [];
-  if (remotive.status === "fulfilled") jobs.push(...remotive.value);
-  if (arbeitnow.status === "fulfilled") jobs.push(...arbeitnow.value);
-  if (jobicy.status === "fulfilled") jobs.push(...jobicy.value);
+  for (const result of results) {
+    if (result.status === "fulfilled") jobs.push(...result.value);
+  }
 
   if (jobs.length === 0) {
-    const reasons = [remotive, arbeitnow, jobicy]
+    const reasons = results
       .filter((r) => r.status === "rejected")
       .map((r) => String(r.reason))
       .join("; ");
@@ -126,7 +123,7 @@ function paginate(jobs: Job[], query: JobQuery): JobListResponse {
 }
 
 async function getJobsLive(query: JobQuery): Promise<JobListResponse> {
-  const jobs = await fetchAllSources(query.search?.trim() || undefined);
+  const jobs = await fetchAllSources();
   return { ...paginate(filterInMemory(jobs, query), query), origin: "live" };
 }
 
@@ -258,10 +255,7 @@ export async function getJobs(query: JobQuery): Promise<JobListResponse> {
   return getJobsLive(query);
 }
 
-export async function getJobById(
-  id: string,
-  search?: string
-): Promise<Job | null> {
+export async function getJobById(id: string): Promise<Job | null> {
   try {
     if (isDbConfigured()) {
       await connectDB();
@@ -272,15 +266,11 @@ export async function getJobById(
     console.warn("Job lookup from database failed, using live sources:", error);
   }
 
-  const attempts = await Promise.allSettled([
-    fetchRemotive(search?.trim() || undefined),
-    fetchArbeitnow(),
-    fetchJobicy(),
-  ]);
+  const attempts = await Promise.allSettled([fetchCompanyBoards()]);
 
   for (const result of attempts) {
     if (result.status === "fulfilled") {
-      const job = result.value.find((job) => job.id === id);
+      const job = result.value.find((candidate) => candidate.id === id);
       if (job) return job;
     }
   }

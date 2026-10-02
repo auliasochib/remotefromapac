@@ -17,18 +17,11 @@ export type JobRegion =
   | "Africa"
   | "Other";
 
-/** Where a job comes from. The job `id` is prefixed with this value. */
-export type JobSource =
-  | "remotive"
-  | "arbeitnow"
-  | "jobicy"
-  | "weworkremotely"
-  | "remoteok"
-  | "adzuna"
-  | "himalayas"
-  | "greenhouse"
-  | "lever"
-  | "ashby";
+/**
+ * Where a job comes from — first-party only: each employer publishes its own
+ * openings through its ATS job-board API. No third-party job boards.
+ */
+export type JobSource = "greenhouse" | "lever" | "ashby";
 
 /**
  * How reachable a job is from the APAC region.
